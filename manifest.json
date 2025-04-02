@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "LOL Team Schedule Tracker",
+  "version": "1.0",
+  "description": "Theo dõi lịch thi đấu của các đội tuyển Liên minh huyền thoại",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api.pandascore.co/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon64.png"
+  },
+  "icons": {
+    "64": "icon64.png"
+  }
+} 

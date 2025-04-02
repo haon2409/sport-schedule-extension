@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>LOL Team Schedule Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Lịch thi đấu LOL</h1>
+    
+    <div class="tabs">
+      <button class="tab-button active" data-tab="teams">Đội Tuyển</button>
+      <button class="tab-button" data-tab="tournaments">Giải Đấu</button>
+    </div>
+
+    <div class="tab-content active" id="teams-tab">
+      <div class="search-section">
+        <input type="text" id="teamSearch" placeholder="Tìm kiếm đội tuyển...">
+        <button id="searchButton">Tìm kiếm</button>
+      </div>
+
+      <div class="teams-section">
+        <h2>Đội tuyển đang theo dõi</h2>
+        <div id="followedTeams" class="teams-list">
+          <!-- Danh sách đội tuyển sẽ được thêm vào đây -->
+        </div>
+      </div>
+
+      <div class="schedule-section">
+        <h2>Lịch thi đấu</h2>
+        <div id="scheduleList" class="schedule-list">
+          <!-- Lịch thi đấu sẽ được hiển thị ở đây -->
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tournaments-tab">
+      <div class="search-section">
+        <input type="text" id="tournamentSearch" placeholder="Tìm kiếm giải đấu...">
+        <button id="tournamentSearchButton">Tìm kiếm</button>
+      </div>
+
+      <div class="tournaments-section">
+        <h2>Giải đấu đang theo dõi</h2>
+        <div id="followedTournaments" class="tournaments-list">
+          <!-- Danh sách giải đấu sẽ được thêm vào đây -->
+        </div>
+      </div>
+
+      <div class="tournament-schedule-section">
+        <div class="tabs">
+          <button class="tab-button active" data-tab="tournament-schedule">Lịch thi đấu giải</button>
+          <button class="tab-button" data-tab="tournament-standings">Bảng xếp hạng</button>
+        </div>
+        <div id="tournament-schedule-tab" class="tab-content active">
+          <div id="tournamentScheduleList" class="schedule-list"></div>
+        </div>
+        <div id="tournament-standings-tab" class="tab-content">
+          <div id="tournamentStandingsList" class="standings-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 
