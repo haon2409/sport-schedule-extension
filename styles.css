@@ -442,3 +442,53 @@ h3 .team-logo, h3 .tournament-logo {
 .team-item.selected:hover, .tournament-item.selected:hover {
   background-color: #bbdefb;
 } 
+
+.match-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 5px;
+  margin-left: -50px;
+}
+
+.match-time {
+  font-size: 12px;
+  color: #555;
+  text-align: center;
+  flex-grow: 1;
+}
+
+.opponent-info {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  right: 20px; /* Giảm right để dành chỗ cho nút xóa */
+  margin-right: 20px;
+  max-width: 80px; /* Giới hạn chiều rộng để tránh tràn */
+  overflow: hidden; /* Ẩn phần tên vượt quá */
+}
+
+.opponent-logo {
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+}
+
+.opponent-name {
+  font-size: 12px;
+  color: #333;
+  white-space: nowrap; /* Không xuống dòng */
+  overflow: hidden;
+  text-overflow: ellipsis; /* Thêm ... nếu tên bị cắt */
+}
+
+.remove-team {
+  font-size: 16px;
+  color: #ff4444;
+  cursor: pointer;
+  margin-left: 8px;
+  position: absolute; /* Định vị cố định */  
+  right: 7px;    
+  margin-top: 7px;
+}
