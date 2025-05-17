@@ -6,12 +6,17 @@ const API_URL = 'https://api.pandascore.co';
 
 // Khởi tạo khi popup được mở
 document.addEventListener('DOMContentLoaded', async () => {
+  const followedTeamsDiv = document.getElementById('followedTeams');
+  followedTeamsDiv.innerHTML = '<div class="loading">Đang tải danh sách đội...</div>';
+
   // Lấy danh sách đội và giải đấu đã theo dõi từ storage
   chrome.storage.local.get(['followedTeams', 'followedTournaments'], async (result) => {
     if (result.followedTeams) {
       followedTeams = result.followedTeams;
       await checkMatchesOnPopupOpen(); // Kiểm tra lịch thi đấu khi mở popup
       displayFollowedTeams();
+    } else {
+      followedTeamsDiv.innerHTML = ''; // Xóa loading nếu không có đội
     }
     if (result.followedTournaments) {
       followedTournaments = result.followedTournaments;
@@ -230,7 +235,7 @@ async function searchTeam() {
 async function searchTournament() {
   const searchInput = document.getElementById('tournamentSearch');
   const tournamentName = searchInput.value.trim();
-  if (!tournamentName) return;
+  if (!teamName) return;
 
   const oldSearchResults = document.querySelector('.tournament-search-results');
   if (oldSearchResults) oldSearchResults.remove();
@@ -336,7 +341,6 @@ function displayFollowedTeams() {
     });
 
     teamElement.querySelector('.remove-team').addEventListener('click', (e) => {
-     Functor
       e.stopPropagation();
       removeTeam(team.id);
     });
