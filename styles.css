@@ -63,19 +63,7 @@ button:hover {
   align-items: center;
   padding: 8px;
   border-bottom: 1px solid #eee;
-  cursor: move;
   transition: all 0.3s ease;
-  user-select: none;
-}
-
-.team-item.dragging, .tournament-item.dragging {
-  opacity: 0.5;
-  background-color: #f0f0f0;
-  border: 2px dashed #4CAF50;
-}
-
-.team-item.drag-over, .tournament-item.drag-over {
-  border-top: 2px solid #4CAF50;
 }
 
 .team-item:last-child, .tournament-item:last-child {
@@ -91,6 +79,13 @@ button:hover {
   align-items: center;
   gap: 10px;
   flex: 1;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.team-name:hover {
+  background-color: #f0f0f0;
+  border-radius: 4px;
 }
 
 .team-logo {
@@ -441,7 +436,7 @@ h3 .team-logo, h3 .tournament-logo {
 
 .team-item.selected:hover, .tournament-item.selected:hover {
   background-color: #bbdefb;
-} 
+}
 
 .match-info {
   display: flex;
@@ -463,10 +458,17 @@ h3 .team-logo, h3 .tournament-logo {
   display: flex;
   align-items: center;
   position: absolute;
-  right: 20px; /* Giảm right để dành chỗ cho nút xóa */
+  right: 20px;
   margin-right: 20px;
-  max-width: 80px; /* Giới hạn chiều rộng để tránh tràn */
-  overflow: hidden; /* Ẩn phần tên vượt quá */
+  max-width: 80px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.opponent-info:hover {
+  background-color: #f0f0f0;
+  border-radius: 4px;
 }
 
 .opponent-logo {
@@ -478,9 +480,9 @@ h3 .team-logo, h3 .tournament-logo {
 .opponent-name {
   font-size: 12px;
   color: #333;
-  white-space: nowrap; /* Không xuống dòng */
+  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis; /* Thêm ... nếu tên bị cắt */
+  text-overflow: ellipsis;
 }
 
 .remove-team {
@@ -488,7 +490,7 @@ h3 .team-logo, h3 .tournament-logo {
   color: #ff4444;
   cursor: pointer;
   margin-left: 8px;
-  position: absolute; /* Định vị cố định */  
-  right: 7px;    
+  position: absolute;
+  right: 7px;
   margin-top: 7px;
 }
