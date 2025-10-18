@@ -232,32 +232,101 @@ async function searchTeam() {
 }
 
 // Hàm tìm kiếm giải đấu
+// --- ĐÃ FIX HÀM searchTournament() ---
+
+// --- HÀM searchTournament() NÂNG CAO ---
+// Thực hiện nhiều cách gọi đến PandaScore để tăng khả năng tìm thấy giải đấu
+// Thử: search[name], search[slug], filter[name], endpoint /lol/leagues, /leagues, rồi fallback lấy danh sách và lọc client-side
+
 async function searchTournament() {
   const searchInput = document.getElementById('tournamentSearch');
-  const tournamentName = searchInput.value.trim();
-  if (!teamName) return;
+  const rawName = searchInput.value.trim();
+  const tournamentName = rawName;
+  if (!tournamentName) return;
 
   const oldSearchResults = document.querySelector('.tournament-search-results');
   if (oldSearchResults) oldSearchResults.remove();
 
-  try {
-    const response = await fetch(`${API_URL}/lol/leagues?search[slug]=${encodeURIComponent(tournamentName.toLowerCase())}`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
-      mode: 'cors'
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+  // helper: safe fetch và parse json
+  async function tryFetchJson(url) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
+        mode: 'cors'
+      });
+      if (!res.ok) {
+        console.warn('Request failed', res.status, url);
+        return null;
+      }
+      const j = await res.json();
+      return j;
+    } catch (e) {
+      console.warn('Fetch error', e, url);
+      return null;
+    }
+  }
 
-    if (data.length > 0) {
+  // normalize string for comparison
+  function normalize(s) {
+    return (s || '').toString().trim().toLowerCase();
+  }
+
+  // try a list of candidate URLs (in order)
+  const candidates = [
+    `${API_URL}/lol/leagues?search[name]=${encodeURIComponent(tournamentName)}&per_page=50`,
+    `${API_URL}/lol/leagues?search[slug]=${encodeURIComponent(tournamentName.toLowerCase())}&per_page=50`,
+    `${API_URL}/lol/leagues?filter[name]=${encodeURIComponent(tournamentName)}&per_page=50`,
+    `${API_URL}/leagues?search[name]=${encodeURIComponent(tournamentName)}&per_page=50`,
+    `${API_URL}/leagues?filter[name]=${encodeURIComponent(tournamentName)}&per_page=50`,
+    // Try limiting to game if common value — increases chance to match League of Legends entries
+    `${API_URL}/leagues?game=league_of_legends&per_page=100`
+  ];
+
+  let data = null;
+
+  // sequentially try candidate endpoints until we get non-empty array
+  for (const url of candidates) {
+    data = await tryFetchJson(url);
+    if (Array.isArray(data) && data.length > 0) {
+      // if we used the broad /leagues?game=... endpoint, we still need to filter by name
+      if (url.includes('game=') ) {
+        const filtered = data.filter(l => normalize(l.name).includes(normalize(tournamentName)) || normalize(l.slug || '').includes(normalize(tournamentName)));
+        if (filtered.length > 0) {
+          data = filtered;
+          break;
+        } else {
+          data = null;
+          continue;
+        }
+      }
+      break;
+    }
+    data = null;
+  }
+
+  // fallback: if still null, try fetching first page of /leagues without params and filter client-side
+  if (!data) {
+    const fallback = await tryFetchJson(`${API_URL}/leagues?per_page=100`);
+    if (Array.isArray(fallback) && fallback.length > 0) {
+      const filtered = fallback.filter(l => normalize(l.name).includes(normalize(tournamentName)) || normalize(l.slug || '').includes(normalize(tournamentName)));
+      if (filtered.length > 0) data = filtered;
+    }
+  }
+
+  try {
+    if (data && Array.isArray(data) && data.length > 0) {
       const searchResults = document.createElement('div');
       searchResults.className = 'search-results tournament-search-results';
       searchResults.innerHTML = '<h3>Kết quả tìm kiếm:</h3>';
+
       data.forEach(league => {
         const leagueElement = document.createElement('div');
         leagueElement.className = 'tournament-item';
         leagueElement.innerHTML = createTournamentHTML(league) + `<button class="add-team" data-tournament-id="${league.id}">+</button>`;
+
         const img = leagueElement.querySelector('.tournament-logo');
-        img.addEventListener('error', () => handleImageError(img));
+        if (img) img.addEventListener('error', () => handleImageError(img));
+
         leagueElement.querySelector('.add-team').addEventListener('click', (e) => {
           e.stopPropagation();
           if (!followedTournaments.some(t => t.id === league.id)) {
@@ -268,48 +337,17 @@ async function searchTournament() {
             searchInput.value = '';
           }
         });
+
         searchResults.appendChild(leagueElement);
       });
+
       const followedTournamentsDiv = document.getElementById('followedTournaments');
       followedTournamentsDiv.parentNode.insertBefore(searchResults, followedTournamentsDiv);
     } else {
-      const nameResponse = await fetch(`${API_URL}/lol/leagues?search[name]=${encodeURIComponent(tournamentName)}`, {
-        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
-        mode: 'cors'
-      });
-      if (!nameResponse.ok) throw new Error(`HTTP error! status: ${nameResponse.status}`);
-      const nameData = await nameResponse.json();
-
-      if (nameData.length > 0) {
-        const searchResults = document.createElement('div');
-        searchResults.className = 'search-results tournament-search-results';
-        searchResults.innerHTML = '<h3>Kết quả tìm kiếm:</h3>';
-        nameData.forEach(league => {
-          const leagueElement = document.createElement('div');
-          leagueElement.className = 'tournament-item';
-          leagueElement.innerHTML = createTournamentHTML(league) + `<button class="add-team" data-tournament-id="${league.id}">+</button>`;
-          const img = leagueElement.querySelector('.tournament-logo');
-          img.addEventListener('error', () => handleImageError(img));
-          leagueElement.querySelector('.add-team').addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (!followedTournaments.some(t => t.id === league.id)) {
-              followedTournaments.push(league);
-              saveFollowedTournaments();
-              displayFollowedTournaments();
-              searchResults.remove();
-              searchInput.value = '';
-            }
-          });
-          searchResults.appendChild(leagueElement);
-        });
-        const followedTournamentsDiv = document.getElementById('followedTournaments');
-        followedTournamentsDiv.parentNode.insertBefore(searchResults, followedTournamentsDiv);
-      } else {
-        alert('Không tìm thấy giải đấu nào. Vui lòng thử tìm kiếm với tên đầy đủ hoặc tên viết tắt khác.\nVí dụ: "LCK Spring 2024" hoặc "LCK"');
-      }
+      alert('Không tìm thấy giải đấu nào. Gợi ý: thử với tên chính xác, viết không dấu, hoặc một phần tên (ví dụ: "LCK", "LCK Spring").');
     }
   } catch (error) {
-    console.error('Lỗi khi tìm kiếm giải đấu:', error);
+    console.error('Lỗi khi hiển thị kết quả tìm kiếm giải đấu:', error);
     alert('Có lỗi xảy ra khi tìm kiếm giải đấu. Vui lòng thử lại sau.');
   }
 }
@@ -319,17 +357,52 @@ function displayFollowedTeams() {
   const followedTeamsDiv = document.getElementById('followedTeams');
   followedTeamsDiv.innerHTML = '';
 
-  followedTeams.forEach(team => {
+  followedTeams.forEach(async team => {
+    // --- Lấy thông tin BO của trận đấu sắp tới ---
+    let boData = null;
+    let matchTime = '';
+    try {
+      const res = await fetch(`${API_URL}/lol/matches/upcoming?filter[opponent_id]=${team.id}&per_page=1`, {
+        headers: { 'Authorization': `Bearer ${API_KEY}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const match = data[0];
+          boData = match.number_of_games || null;
+          if (match.scheduled_at) {
+            const date = new Date(match.scheduled_at);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            matchTime = `${hours}:${minutes}`;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Không lấy được thông tin BO cho đội', team.id, err);
+    }
+
+    // Lưu thông tin BO vào team để dùng sau
+    team.bo = boData;
+
+    // Gộp hiển thị vào phần giờ đấu trong createTeamHTML bằng cách tìm phần tử thời gian
     const teamElement = document.createElement('div');
     teamElement.className = 'team-item';
     teamElement.dataset.teamId = team.id;
     teamElement.innerHTML = createTeamHTML(team) + `<span class="remove-team" data-team-id="${team.id}">×</span>`;
-    
+
+    // Sau khi render, chèn thêm BO ngay sau phần giờ đấu (nếu có)
+    const timeElement = teamElement.querySelector('.match-time');
+    if (timeElement && matchTime) {
+      const boText = team.bo ? ` (BO${team.bo})` : '';
+      timeElement.textContent = `${matchTime}${boText}`;
+    }
+
     const img = teamElement.querySelector('.team-logo');
     img.addEventListener('error', () => handleImageError(img));
     const opponentImg = teamElement.querySelector('.opponent-logo');
     if (opponentImg) opponentImg.addEventListener('error', () => handleImageError(opponentImg));
-    
+
     const teamNameElement = teamElement.querySelector('.team-name');
     teamNameElement.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -361,10 +434,11 @@ function displayFollowedTeams() {
         }
       });
     }
-    
+
     followedTeamsDiv.appendChild(teamElement);
   });
 }
+
 
 // Hàm hiển thị danh sách giải đấu đang theo dõi
 function displayFollowedTournaments() {
@@ -390,7 +464,8 @@ function displayFollowedTournaments() {
   });
 }
 
-// Hàm hiển thị lịch thi đấu của đội
+// --- HIỂN THỊ team.id THAY CHO TÊN ĐỘI TUYỂN (TẠM THỜI DEBUG) ---
+
 async function showTeamSchedule(team) {
   document.querySelectorAll('.team-item').forEach(item => item.classList.remove('selected'));
   const selectedTeam = document.querySelector(`.team-item[data-team-id="${team.id}"]`);
@@ -400,163 +475,121 @@ async function showTeamSchedule(team) {
   scheduleList.innerHTML = '<div class="loading">Đang tải lịch thi đấu...</div>';
 
   try {
-    const liveResponse = await fetch(`${API_URL}/lol/matches/running?filter[opponent_id]=${team.id}&include=opponents.opponent,league,tournament,serie`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    const liveData = await liveResponse.json();
+    const responses = await Promise.all([
+      fetch(`${API_URL}/lol/matches/running?filter[opponent_id]=${team.id}&include=opponents.opponent`, { headers: { 'Authorization': `Bearer ${API_KEY}` } }),
+      fetch(`${API_URL}/lol/matches/upcoming?filter[opponent_id]=${team.id}&per_page=5&include=opponents.opponent`, { headers: { 'Authorization': `Bearer ${API_KEY}` } }),
+      fetch(`${API_URL}/lol/matches/past?filter[opponent_id]=${team.id}&per_page=5&include=opponents.opponent`, { headers: { 'Authorization': `Bearer ${API_KEY}` } })
+    ]);
 
-    const upcomingResponse = await fetch(`${API_URL}/lol/matches/upcoming?filter[opponent_id]=${team.id}&per_page=5&include=opponents.opponent,league,tournament,serie`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    const upcomingData = await upcomingResponse.json();
-
-    const pastResponse = await fetch(`${API_URL}/lol/matches/past?filter[opponent_id]=${team.id}&per_page=5&include=opponents.opponent,league,tournament,serie`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    const pastData = await pastResponse.json();
+    const [liveData, upcomingData, pastData] = await Promise.all(responses.map(r => r.json()));
 
     const contentContainer = document.createElement('div');
-    const title = document.createElement('h3');
-    const teamLogo = document.createElement('img');
-    teamLogo.className = 'team-logo';
-    teamLogo.src = team.image_url || 'https://via.placeholder.com/24';
-    teamLogo.alt = `${team.name} logo`;
-    teamLogo.addEventListener('error', () => handleImageError(teamLogo));
-    title.appendChild(teamLogo);
-    title.appendChild(document.createTextNode(team.name));
-    contentContainer.appendChild(title);
 
-    if (liveData && liveData.length > 0) {
-      const liveTitle = document.createElement('h4');
-      liveTitle.textContent = 'Trận đấu đang diễn ra';
-      contentContainer.appendChild(liveTitle);
-      liveData.forEach(match => {
-        const opponent = match.opponents.find(o => o.opponent.id !== team.id)?.opponent;
-        const opponentName = opponent?.name || 'Chưa xác định';
-        const opponentLogo = opponent?.image_url || 'https://via.placeholder.com/24';
-        const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'Chưa xác định';
-        const teamScore = match.results?.find(r => r.team_id === team.id)?.score || 0;
-        const opponentScore = match.results?.find(r => r.team_id !== team.id)?.score || 0;
-        const currentGame = teamScore + opponentScore + 1;
+    const style = document.createElement('style');
+    style.textContent = `
+      .match-line.single {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        white-space: nowrap;
+        padding: 2px 0;
+      }
+      .match-center {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .match-line.single .team-left,
+      .match-line.single .team-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .match-line.single .team-logo {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+      .match-line.single .team-name {
+        font-weight: 600;
+      }
+      .match-line.single .score {
+        font-weight: bold;
+        margin: 0 6px;
+        min-width: 48px;
+        text-align: center;
+      }
+      .match-line.single .bo-info {
+        font-size: 12px;
+        font-weight: 500;
+        color: #999;
+        margin-left: 8px;
+      }
+    `;
 
-        const matchElement = document.createElement('div');
-        matchElement.className = 'schedule-item live';
-        matchElement.innerHTML = `
-          <div class="match-teams">
-            <div class="team-info">
-              <img class="team-logo" src="${team.image_url || 'https://via.placeholder.com/24'}" alt="${team.name} logo">
-              <span>${team.name}</span>
-            </div>
-            <div class="match-score">
-              <span class="score">${teamScore}</span>
-              <span class="vs">-</span>
-              <span class="score">${opponentScore}</span>
-            </div>
-            <div class="team-info">
-              <img class="team-logo" src="${opponentLogo}" alt="${opponentName} logo">
-              <span>${opponentName}</span>
-            </div>
-          </div>
-          <div class="match-details">
-            <span class="match-type">${matchType}</span>
-            <span class="match-status">Đang diễn ra - Ván ${currentGame}</span>
-          </div>
-        `;
-        matchElement.querySelectorAll('img').forEach(img => {
-          img.addEventListener('error', () => handleImageError(img));
-        });
-        contentContainer.appendChild(matchElement);
-      });
-    } else {
-      const noMatches = document.createElement('div');
-      noMatches.className = 'no-matches';
-      noMatches.textContent = 'Không có trận đấu đang diễn ra';
-      contentContainer.appendChild(noMatches);
-    }
+    const existingStyle = document.head.querySelector('#popup-schedule-style');
+    if (existingStyle) existingStyle.remove();
+    style.id = 'popup-schedule-style';
+    document.head.appendChild(style);
 
-    if (upcomingData && upcomingData.length > 0) {
-      const upcomingTitle = document.createElement('h4');
-      upcomingTitle.textContent = 'Trận đấu sắp tới';
-      contentContainer.appendChild(upcomingTitle);
-      upcomingData.forEach(match => {
-        const opponent = match.opponents.find(o => o.opponent.id !== team.id)?.opponent;
-        const opponentName = opponent?.name || 'Chưa xác định';
-        const opponentLogo = opponent?.image_url || 'https://via.placeholder.com/24';
-        const matchTime = formatDateTime(match.scheduled_at);
-        const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'Chưa xác định';
+    function renderSection(titleText, matches, cssClass) {
+      const sectionTitle = document.createElement('h4');
+      sectionTitle.textContent = titleText;
+      contentContainer.appendChild(sectionTitle);
 
-        const matchElement = document.createElement('div');
-        matchElement.className = 'schedule-item upcoming';
-        matchElement.innerHTML = `
-          <div class="match-teams">
-            <div class="team-info">
-              <img class="team-logo" src="${team.image_url || 'https://via.placeholder.com/24'}" alt="${team.name} logo">
-              <span>${team.name}</span>
-            </div>
-            <span class="vs">vs</span>
-            <div class="team-info">
-              <img class="team-logo" src="${opponentLogo}" alt="${opponentName} logo">
-              <span>${opponentName}</span>
-            </div>
-          </div>
-          <div class="match-time">${matchTime}</div>
-          <div class="match-type">${matchType}</div>
-        `;
-        matchElement.querySelectorAll('img').forEach(img => {
-          img.addEventListener('error', () => handleImageError(img));
-        });
-        contentContainer.appendChild(matchElement);
-      });
-    } else {
-      const noMatches = document.createElement('div');
-      noMatches.className = 'no-matches';
-      noMatches.textContent = 'Không có trận đấu sắp tới';
-      contentContainer.appendChild(noMatches);
-    }
+      if (!matches || matches.length === 0) {
+        const noMatches = document.createElement('div');
+        noMatches.className = 'no-matches';
+        noMatches.textContent = 'Không có dữ liệu';
+        contentContainer.appendChild(noMatches);
+        return;
+      }
 
-    if (pastData && pastData.length > 0) {
-      const pastTitle = document.createElement('h4');
-      pastTitle.textContent = 'Trận đấu gần đây';
-      contentContainer.appendChild(pastTitle);
-      pastData.forEach(match => {
-        const opponent = match.opponents.find(o => o.opponent.id !== team.id)?.opponent;
-        const opponentName = opponent?.name || 'Chưa xác định';
-        const opponentLogo = opponent?.image_url || 'https://via.placeholder.com/24';
-        const matchTime = formatDateTime(match.scheduled_at);
-        const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'Chưa xác định';
-        const isWinner = match.winner?.id === team.id;
-        const score = match.results?.map(r => r.score).join(' - ') || 'Chưa có';
+      matches.forEach(match => {
+        const opps = match.opponents?.map(o => o.opponent) || [];
+        let left = opps[0] || {};
+        let right = opps[1] || {};
+
+        if (Number(right.id) === Number(team.id)) {
+          [left, right] = [right, left];
+        }
+
+        const team1 = left.acronym || left.name || 'N/A';
+        const team2 = right.acronym || right.name || 'N/A';
+        const team1Logo = left.image_url || 'https://via.placeholder.com/24';
+        const team2Logo = right.image_url || 'https://via.placeholder.com/24';
+
+        const team1Score = match.results?.find(r => Number(r.team_id) === Number(left.id))?.score ?? '-';
+        const team2Score = match.results?.find(r => Number(r.team_id) === Number(right.id))?.score ?? '-';
+
+        const boText = match.number_of_games ? `BO${match.number_of_games}` : '';
 
         const matchElement = document.createElement('div');
-        matchElement.className = 'schedule-item past';
+        matchElement.className = `schedule-item ${cssClass}`;
         matchElement.innerHTML = `
-          <div class="match-teams">
-            <div class="team-info">
-              <img class="team-logo" src="${team.image_url || 'https://via.placeholder.com/24'}" alt="${team.name} logo">
-              <span>${team.name}</span>
+          <div class="match-line single">
+            <div class="match-center">
+              <div class="team-left">
+                <img class="team-logo" src="${team1Logo}" alt="${team1}">
+                <span class="team-name">${team1}</span>
+              </div>
+              <div class="score">${team1Score} - ${team2Score}</div>
+              <div class="team-right">
+                <span class="team-name">${team2}</span>
+                <img class="team-logo" src="${team2Logo}" alt="${team2}">
+              </div>
             </div>
-            <span class="vs">vs</span>
-            <div class="team-info">
-              <img class="team-logo" src="${opponentLogo}" alt="${opponentName} logo">
-              <span>${opponentName}</span>
-            </div>
+            <div class="bo-info">${boText}</div>
           </div>
-          <div class="match-time">${matchTime}</div>
-          <div class="match-type">${matchType}</div>
-          <div class="match-result">Kết quả: ${score}</div>
-          <div class="match-winner">${isWinner ? 'Chiến thắng' : 'Thất bại'}</div>
         `;
-        matchElement.querySelectorAll('img').forEach(img => {
-          img.addEventListener('error', () => handleImageError(img));
-        });
         contentContainer.appendChild(matchElement);
       });
-    } else {
-      const noMatches = document.createElement('div');
-      noMatches.className = 'no-matches';
-      noMatches.textContent = 'Không có trận đấu gần đây';
-      contentContainer.appendChild(noMatches);
     }
+
+    renderSection('Trận đấu đang diễn ra', liveData, 'live');
+    renderSection('Trận đấu sắp tới', upcomingData, 'upcoming');
+    renderSection('Trận đấu gần đây', pastData, 'past');
 
     scheduleList.innerHTML = '';
     scheduleList.appendChild(contentContainer);
@@ -565,6 +598,7 @@ async function showTeamSchedule(team) {
     scheduleList.innerHTML = `<div class="error">Lỗi khi tải lịch thi đấu: ${error.message}</div>`;
   }
 }
+
 
 // Hàm hiển thị lịch thi đấu của giải
 async function showTournamentSchedule(tournament) {
