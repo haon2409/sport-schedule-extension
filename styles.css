@@ -145,7 +145,7 @@ button:hover {
   justify-self: center;
   text-align: center;
   padding: 0 4px;
-  max-width: 128px;
+  max-width: 160px;
   min-width: 0;
 }
 
@@ -170,6 +170,15 @@ button:hover {
 .followed-match-bo {
   font-size: 14px;
   font-weight: 700;
+}
+
+.followed-match-tournament {
+  font-size: 10px;
+  color: #555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .followed-match-bo--positive {

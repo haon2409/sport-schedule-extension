@@ -57,15 +57,27 @@ function isToday(dateString) {
          matchDate.getFullYear() === today.getFullYear();
 }
 
+function getMatchTournamentName(match) {
+  const leagueName = match?.league?.name;
+  if (!leagueName) return null;
+
+  const abbreviations = {
+    'Esports World Cup': 'EWC',
+  };
+  return abbreviations[leagueName] || leagueName;
+}
+
 // Hàm kiểm tra lịch thi đấu khi mở popup
 async function checkMatchesOnPopupOpen() {
   try {
     if (!followedTeams || followedTeams.length === 0) return;
 
+    const matchInclude = 'opponents.opponent,league,tournament,serie';
+
     const matchPromises = followedTeams.map(async (team) => {
       // Kiểm tra trận live
       const liveResponse = await fetch(
-        `${API_URL}/lol/matches/running?filter[opponent_id]=${team.id}&include=opponents.opponent`,
+        `${API_URL}/lol/matches/running?filter[opponent_id]=${team.id}&include=${matchInclude}`,
         { headers: { 'Authorization': `Bearer ${API_KEY}` } }
       );
       const liveData = await liveResponse.json();
@@ -75,7 +87,7 @@ async function checkMatchesOnPopupOpen() {
 
       // Kiểm tra trận upcoming
       const upcomingResponse = await fetch(
-        `${API_URL}/lol/matches/upcoming?filter[opponent_id]=${team.id}&per_page=1&sort=begin_at&include=opponents.opponent`,
+        `${API_URL}/lol/matches/upcoming?filter[opponent_id]=${team.id}&per_page=1&sort=begin_at&include=${matchInclude}`,
         { headers: { 'Authorization': `Bearer ${API_KEY}` } }
       );
       const upcomingData = await upcomingResponse.json();
@@ -85,7 +97,7 @@ async function checkMatchesOnPopupOpen() {
 
       // Lấy trận past gần nhất
       const pastResponse = await fetch(
-        `${API_URL}/lol/matches/past?filter[opponent_id]=${team.id}&per_page=1&sort=-end_at&include=opponents.opponent`,
+        `${API_URL}/lol/matches/past?filter[opponent_id]=${team.id}&per_page=1&sort=-end_at&include=${matchInclude}`,
         { headers: { 'Authorization': `Bearer ${API_KEY}` } }
       );
       const pastData = await pastResponse.json();
@@ -104,7 +116,8 @@ async function checkMatchesOnPopupOpen() {
         opponent: matchData.match.opponents.find(o => o.opponent.id !== team.id)?.opponent,
         matchTime: matchData.match.scheduled_at || matchData.match.begin_at || matchData.match.end_at,
         status: matchData.type === 'live' ? 'Đang diễn ra' : matchData.type === 'upcoming' ? 'Sắp diễn ra' : 'Kết thúc',
-        numberOfGames: matchData.match.number_of_games || null
+        numberOfGames: matchData.match.number_of_games || null,
+        tournamentName: getMatchTournamentName(matchData.match) || 'Không xác định'
       } : null;
     });
   } catch (error) {
@@ -137,6 +150,7 @@ function createTeamHTML(team) {
     const oppLogo = opponent?.image_url || 'https://via.placeholder.com/24';
     const matchTime = formatDateTime(team.matchData.matchTime);
     const matchType = team.matchData.numberOfGames ? `BO${team.matchData.numberOfGames}` : '—';
+    const tournamentName = team.matchData.tournamentName || 'Không xác định';
     const status = team.matchData.status === 'Sắp diễn ra' ? '' : (team.matchData.status || '');
 
     centerBlock = `
@@ -144,6 +158,7 @@ function createTeamHTML(team) {
         <div class="followed-match-time">${matchTime}</div>
         <div class="followed-match-extra">
           <span class="followed-match-bo">${matchType}</span>
+          <span class="followed-match-tournament">${tournamentName}</span>
           ${status ? `<span class="followed-match-status">${status}</span>` : ''}
         </div>
       </div>`;
@@ -521,6 +536,7 @@ async function displayTeamSchedule(teamId) {
       const scoreB = teamBScore ?? '-';
       const matchTime = formatDateTime(match.scheduled_at || match.begin_at || match.end_at);
       const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'BO?';
+      const tournamentName = getMatchTournamentName(match) || 'Không xác định';
       const detailLine = includeResult ? `${scoreA}-${scoreB}` : `${matchType}`;
       const boToneClass = includeResult
         ? ((Number(scoreA) >= Number(scoreB)) ? 'followed-match-bo--positive' : 'followed-match-bo--negative')
@@ -537,6 +553,7 @@ async function displayTeamSchedule(teamId) {
               <div class="followed-match-time">${matchTime}</div>
               <div class="followed-match-extra">
                 <span class="followed-match-bo ${boToneClass}">${detailLine}</span>
+                <span class="followed-match-tournament">${tournamentName}</span>
               </div>
             </div>
             <div class="followed-opponent-block">
@@ -559,6 +576,7 @@ async function displayTeamSchedule(teamId) {
           const team1Logo = team1?.image_url || 'https://via.placeholder.com/24';
           const team2Logo = team2?.image_url || 'https://via.placeholder.com/24';
           const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'Chưa xác định';
+          const tournamentName = getMatchTournamentName(match) || 'Không xác định';
           const team1Score = match.results?.find(r => r.team_id === team1?.id)?.score || 0;
           const team2Score = match.results?.find(r => r.team_id === team2?.id)?.score || 0;
           const currentGame = team1Score + team2Score + 1;
@@ -582,6 +600,7 @@ async function displayTeamSchedule(teamId) {
               </div>
               <div class="match-details">
                 <span class="match-type">${matchType}</span>
+                <span class="followed-match-tournament">${tournamentName}</span>
                 <span class="match-status">Đang diễn ra - Ván ${currentGame}</span>
               </div>
             </div>
@@ -640,7 +659,6 @@ async function displayTeamSchedule(teamId) {
   }
 }
 
-// Hàm hiển thị bảng xếp hạng của giải
 // Hàm hiển thị bảng xếp hạng của giải
 async function displayTournamentStandings(leagueId) {
   const tournamentInfo = followedTournaments.find(t => t.id === leagueId);
