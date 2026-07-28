@@ -2,12 +2,25 @@ let followedTeams = [];
 let followedTournaments = [];
 let selectedTeamId = null;
 let selectedTournamentId = null;
-const API_KEY = 'GjZzmsBmadIp2qYgdmvMjCr0M3MbPX1qN97Te_qOnuAoMaZcr-E';
 const API_URL = 'https://api.pandascore.co';
-const CACHE_DURATION = 60 * 60 * 1000; // 60 phút
+const CACHE_DURATION = 60 * 60 * 1000;
+
+// Hàm lấy API key từ chrome.storage.sync
+async function getApiKey() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['pandascoreApiKey'], (result) => {
+      resolve(result.pandascoreApiKey || '');
+    });
+  });
+}
 
 // Hàm fetch dữ liệu có tích hợp cache 60 phút
 async function cachedFetch(url) {
+  const API_KEY = await getApiKey();
+  if (!API_KEY) {
+    throw new Error('Chưa cấu hình API Key. Vui lòng bấm chuột phải vào icon tiện ích -> Options để cài đặt.');
+  }
+
   return new Promise((resolve, reject) => {
     const cacheKey = 'api_cache_' + url;
     const now = Date.now();
@@ -87,14 +100,39 @@ document.addEventListener('DOMContentLoaded', async () => {
   const followedTeamsDiv = document.getElementById('followedTeams');
   followedTeamsDiv.innerHTML = '<div class="loading">Đang tải danh sách đội...</div>';
 
-  // Chèn nút "Xóa cache" ngay bên cạnh tiêu đề "Lịch thi đấu LOL" (hoặc thẻ tiêu đề chính)
+  // Chèn nút "Xóa cache" và nút "Cài đặt" cạnh tiêu đề chính
   const headerTitle = document.querySelector('h1') || document.querySelector('.header-title') || document.querySelector('header');
   if (headerTitle && !document.getElementById('clearCacheBtn')) {
+    
+    // Tạo nhóm chứa nút bấm để căn chỉnh gọn gàng
+    const actionContainer = document.createElement('div');
+    actionContainer.style.display = 'inline-block';
+    actionContainer.style.float = 'right';
+
+    // 1. Tạo nút Cài đặt (Icon bánh răng)
+    const settingsBtn = document.createElement('button');
+    settingsBtn.id = 'settingsBtn';
+    settingsBtn.innerHTML = '⚙️';
+    settingsBtn.title = 'Cài đặt API Key';
+    settingsBtn.style.marginLeft = '5px';
+    settingsBtn.style.padding = '2px 6px';
+    settingsBtn.style.fontSize = '11px';
+    settingsBtn.style.cursor = 'pointer';
+    
+    settingsBtn.addEventListener('click', () => {
+      if (chrome.runtime.openOptionsPage) {
+        chrome.runtime.openOptionsPage();
+      } else {
+        window.open(chrome.runtime.getURL('options.html'));
+      }
+    });
+
+    // 2. Tạo nút Xóa cache (như cũ)
     const clearCacheBtn = document.createElement('button');
     clearCacheBtn.id = 'clearCacheBtn';
     clearCacheBtn.className = 'clear-cache-btn';
     clearCacheBtn.textContent = 'Xóa cache';
-    clearCacheBtn.style.marginLeft = '10px';
+    clearCacheBtn.style.marginLeft = '5px';
     clearCacheBtn.style.padding = '2px 6px';
     clearCacheBtn.style.fontSize = '11px';
     clearCacheBtn.style.cursor = 'pointer';
@@ -102,8 +140,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     clearCacheBtn.addEventListener('click', async () => {
       await clearAllCache();
     });
-    
-    headerTitle.appendChild(clearCacheBtn);
+
+    // Đưa cả 2 nút vào container rồi gắn lên tiêu đề
+    actionContainer.appendChild(settingsBtn);
+    actionContainer.appendChild(clearCacheBtn);
+    headerTitle.appendChild(actionContainer);
   }
 
   updateClearCacheButtonState();

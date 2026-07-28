@@ -1,5 +1,12 @@
-const API_KEY = 'GjZzmsBmadIp2qYgdmvMjCr0M3MbPX1qN97Te_qOnuAoMaZcr-E';
 const API_URL = 'https://api.pandascore.co';
+
+async function getApiKey() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['pandascoreApiKey'], (result) => {
+      resolve(result.pandascoreApiKey || '');
+    });
+  });
+}
 
 chrome.alarms.create('checkMatches', { periodInMinutes: 20 });
 
@@ -15,6 +22,12 @@ chrome.runtime.onInstalled.addListener(() => {
 
 async function checkMatches() {
   try {
+    const API_KEY = await getApiKey();
+    if (!API_KEY) {
+      resetBadge();
+      return;
+    }
+
     const { followedTeams } = await chrome.storage.local.get('followedTeams');
     if (!followedTeams || followedTeams.length === 0) {
       resetBadge();
@@ -70,19 +83,19 @@ function updateBadge(matchTime) {
   let backgroundColor = '';
 
   if (hours >= 0 && hours <= 12) {
-    backgroundColor = '#00FF00'; // Xanh
+    backgroundColor = '#00FF00';
     if (hours < 10) {
-      badgeText = `${hours}:${minutes === 0 ? '00' : '30'}`; // 1:00 -> "1:00", 1:30 -> "1:30"
+      badgeText = `${hours}:${minutes === 0 ? '00' : '30'}`;
     } else {
-      badgeText = minutes === 0 ? `${hours}` : `${hours}${minutes}`; // 11:00 -> "11", 11:30 -> "1130"
+      badgeText = minutes === 0 ? `${hours}` : `${hours}${minutes}`;
     }
   } else {
-    backgroundColor = '#FF0000'; // Đỏ
-    const displayHours = hours - 12; // 15h -> 3, 23h -> 11
+    backgroundColor = '#FF0000';
+    const displayHours = hours - 12;
     if (displayHours < 10) {
-      badgeText = `${displayHours}:${minutes === 0 ? '00' : '30'}`; // 15:00 -> "3:00", 15:30 -> "3:30"
+      badgeText = `${displayHours}:${minutes === 0 ? '00' : '30'}`;
     } else {
-      badgeText = minutes === 0 ? `${displayHours}` : `${displayHours}${minutes}`; // 23:00 -> "11", 23:30 -> "1130"
+      badgeText = minutes === 0 ? `${displayHours}` : `${displayHours}${minutes}`;
     }
   }
 
