@@ -51,7 +51,16 @@
       </div>
 
       <div class="tournaments-section">
-        <h2>Giải đấu đang theo dõi</h2>
+        <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin: 15px 0 10px 0;">
+          <h2 style="margin: 0;">Giải đấu đang theo dõi</h2>
+          <div id="tournamentEditControls">
+            <button id="editTournamentsBtn" title="Chỉnh sửa thứ tự" style="background: none; border: none; cursor: pointer; font-size: 16px; padding: 0;">✏️</button>
+            <div id="tournamentEditActionBtns" style="display: none; gap: 5px;">
+              <button id="saveTournamentsBtn" title="Lưu" style="background-color: #4CAF50; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 12px;">✔️ Lưu</button>
+              <button id="cancelTournamentsBtn" title="Hủy" style="background-color: #f44336; color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; font-size: 12px;">✖ Hủy</button>
+            </div>
+          </div>
+        </div>
         <div id="followedTournaments" class="tournaments-list">
           <!-- Danh sách giải đấu sẽ được thêm vào đây -->
         </div>

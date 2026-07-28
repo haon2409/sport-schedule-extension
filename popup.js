@@ -4,6 +4,8 @@ let selectedTeamId = null;
 let selectedTournamentId = null;
 let originalFollowedTeams = []; // Biến lưu bản sao để khôi phục khi Cancel
 let isEditingTeams = false;
+let originalFollowedTournaments = []; // Bản sao để khôi phục khi Cancel giải đấu
+let isEditingTournaments = false;
 const API_URL = 'https://api.pandascore.co';
 const CACHE_DURATION = 60 * 60 * 1000;
 
@@ -148,40 +150,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     actionContainer.appendChild(clearCacheBtn);
     headerTitle.appendChild(actionContainer);
       
-      const editBtn = document.getElementById('editTeamsBtn');
-        const saveBtn = document.getElementById('saveTeamsBtn');
-        const cancelBtn = document.getElementById('cancelTeamsBtn');
-        const actionBtnsDiv = document.getElementById('teamEditActionBtns');
+    const editBtn = document.getElementById('editTeamsBtn');
+    const saveBtn = document.getElementById('saveTeamsBtn');
+    const cancelBtn = document.getElementById('cancelTeamsBtn');
+    const actionBtnsDiv = document.getElementById('teamEditActionBtns');
 
-        if (editBtn) {
-          editBtn.addEventListener('click', () => {
-            isEditingTeams = true;
-            originalFollowedTeams = JSON.parse(JSON.stringify(followedTeams)); // Sao lưu dữ liệu hiện tại
-            editBtn.style.display = 'none';
-            actionBtnsDiv.style.display = 'flex';
-            displayFollowedTeams(); // Render lại để bật trạng thái kéo thả
-          });
-        }
+    if (editBtn) {
+      editBtn.addEventListener('click', () => {
+        isEditingTeams = true;
+        originalFollowedTeams = JSON.parse(JSON.stringify(followedTeams)); // Sao lưu dữ liệu hiện tại
+        editBtn.style.display = 'none';
+        actionBtnsDiv.style.display = 'flex';
+        displayFollowedTeams(); // Render lại để bật trạng thái kéo thả
+      });
+    }
 
-        if (cancelBtn) {
-          cancelBtn.addEventListener('click', () => {
-            isEditingTeams = false;
-            followedTeams = JSON.parse(JSON.stringify(originalFollowedTeams)); // Khôi phục dữ liệu cũ
-            actionBtnsDiv.style.display = 'none';
-            editBtn.style.display = 'inline-block';
-            displayFollowedTeams();
-          });
-        }
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        isEditingTeams = false;
+        followedTeams = JSON.parse(JSON.stringify(originalFollowedTeams)); // Khôi phục dữ liệu cũ
+        actionBtnsDiv.style.display = 'none';
+        editBtn.style.display = 'inline-block';
+        displayFollowedTeams();
+      });
+    }
 
-        if (saveBtn) {
-          saveBtn.addEventListener('click', () => {
-            isEditingTeams = false;
-            actionBtnsDiv.style.display = 'none';
-            editBtn.style.display = 'inline-block';
-            saveFollowedTeams(); // Lưu vào storage
-            displayFollowedTeams();
-          });
-        }
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        isEditingTeams = false;
+        actionBtnsDiv.style.display = 'none';
+        editBtn.style.display = 'inline-block';
+        saveFollowedTeams(); // Lưu vào storage
+        displayFollowedTeams();
+      });
+    }
+
+    const editTournamentBtn = document.getElementById('editTournamentsBtn');
+    const saveTournamentBtn = document.getElementById('saveTournamentsBtn');
+    const cancelTournamentBtn = document.getElementById('cancelTournamentsBtn');
+    const tournamentActionBtnsDiv = document.getElementById('tournamentEditActionBtns');
+
+    if (editTournamentBtn) {
+      editTournamentBtn.addEventListener('click', () => {
+        isEditingTournaments = true;
+        originalFollowedTournaments = JSON.parse(JSON.stringify(followedTournaments));
+        editTournamentBtn.style.display = 'none';
+        tournamentActionBtnsDiv.style.display = 'flex';
+        displayFollowedTournaments();
+      });
+    }
+
+    if (cancelTournamentBtn) {
+      cancelTournamentBtn.addEventListener('click', () => {
+        isEditingTournaments = false;
+        followedTournaments = JSON.parse(JSON.stringify(originalFollowedTournaments));
+        tournamentActionBtnsDiv.style.display = 'none';
+        editTournamentBtn.style.display = 'inline-block';
+        displayFollowedTournaments();
+      });
+    }
+
+    if (saveTournamentBtn) {
+      saveTournamentBtn.addEventListener('click', () => {
+        isEditingTournaments = false;
+        tournamentActionBtnsDiv.style.display = 'none';
+        editTournamentBtn.style.display = 'inline-block';
+        saveFollowedTournaments();
+        displayFollowedTournaments();
+      });
+    }
   }
 
   updateClearCacheButtonState();
@@ -558,29 +595,8 @@ async function searchTournament() {
 function displayFollowedTeams() {
   const followedTeamsDiv = document.getElementById('followedTeams');
   
-  const sortedTeams = isEditingTeams ? followedTeams : [...followedTeams].sort((a, b) => {
-    const getPriority = (team) => {
-      if (!team.matchData) return 4;
-      const status = team.matchData.status;
-      if (status === 'Đang diễn ra') return 1;
-      if (status === 'Sắp diễn ra') return 2;
-      if (status === 'Kết thúc') return 3;
-      return 4;
-    };
-
-    const priorityA = getPriority(a);
-    const priorityB = getPriority(b);
-
-    if (priorityA !== priorityB) return priorityA - priorityB;
-
-    if (priorityA === 2) {
-      return new Date(a.matchData.matchTime) - new Date(b.matchData.matchTime);
-    }
-    if (priorityA === 3) {
-      return new Date(b.matchData.matchTime) - new Date(a.matchData.matchTime);
-    }
-    return 0;
-  });
+  // Nếu đang chỉnh sửa thì dùng mảng hiện tại, nếu không thì giữ nguyên thứ tự đã lưu (không tự động sort lại đè lên thứ tự kéo thả)
+  const sortedTeams = followedTeams;
 
   followedTeamsDiv.innerHTML = sortedTeams.length === 0
     ? '<div class="no-data">Chưa theo dõi đội nào</div>'
@@ -678,42 +694,58 @@ function displayFollowedTournaments() {
     return;
   }
 
-  const sortedTournaments = [...followedTournaments].sort((a, b) => {
-    const getPriority = (item) => {
-      if (!item.matchData) return 4;
-      const status = item.matchData.status;
-      if (status === 'Đang diễn ra') return 1;
-      if (status === 'Sắp diễn ra') return 2;
-      if (status === 'Kết thúc') return 3;
-      return 4;
-    };
+  // Sử dụng trực tiếp mảng followedTournaments để tôn trọng thứ tự kéo thả thủ công
+  const sortedTournaments = followedTournaments;
 
-    const priorityA = getPriority(a);
-    const priorityB = getPriority(b);
-
-    if (priorityA !== priorityB) return priorityA - priorityB;
-
-    if (priorityA === 2) { 
-      return new Date(a.matchData.matchTime) - new Date(b.matchData.matchTime);
-    }
-    if (priorityA === 3) {
-      return new Date(b.matchData.matchTime) - new Date(a.matchData.matchTime);
-    }
-    return 0;
-  });
-
-  followedTournamentsDiv.innerHTML = sortedTournaments.map(tournament => {
+  followedTournamentsDiv.innerHTML = sortedTournaments.map((tournament, index) => {
     const html = createTournamentFollowedItemHTML(tournament);
     const hasMatchToday = tournament.matchData && isToday(tournament.matchData.matchTime) && tournament.matchData.status !== 'Kết thúc';
     const todayClass = hasMatchToday ? 'match-today' : '';
     const selectedClass = selectedTournamentId === tournament.id ? 'selected' : '';
+    const draggableAttr = isEditingTournaments ? 'draggable="true"' : '';
+    const draggableClass = isEditingTournaments ? 'draggable' : '';
 
     return `
-      <div class="tournament-item ${todayClass} ${selectedClass}" data-tournament-id="${tournament.id}">
+      <div class="tournament-item ${todayClass} ${selectedClass} ${draggableClass}" ${draggableAttr} data-index="${index}" data-tournament-id="${tournament.id}">
         ${html}
         <span class="remove-team remove-tournament" data-tournament-id="${tournament.id}">✖</span>
       </div>`;
   }).join('');
+
+  if (isEditingTournaments) {
+    let draggedIndex = null;
+
+    followedTournamentsDiv.querySelectorAll('.tournament-item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        draggedIndex = parseInt(e.currentTarget.dataset.index, 10);
+        e.currentTarget.classList.add('dragging');
+      });
+
+      item.addEventListener('dragend', (e) => {
+        e.currentTarget.classList.remove('dragging');
+        followedTournamentsDiv.querySelectorAll('.tournament-item').forEach(el => el.classList.remove('drag-over'));
+      });
+
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.currentTarget.classList.add('drag-over');
+      });
+
+      item.addEventListener('dragleave', (e) => {
+        e.currentTarget.classList.remove('drag-over');
+      });
+
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const targetIndex = parseInt(e.currentTarget.dataset.index, 10);
+        if (draggedIndex !== null && draggedIndex !== targetIndex) {
+          const movedItem = followedTournaments.splice(draggedIndex, 1)[0];
+          followedTournaments.splice(targetIndex, 0, movedItem);
+          displayFollowedTournaments();
+        }
+      });
+    });
+  }
 
   followedTournamentsDiv.querySelectorAll('.tournament-item img.team-logo').forEach(img => {
     img.addEventListener('error', () => handleImageError(img));
@@ -722,6 +754,7 @@ function displayFollowedTournaments() {
   followedTournamentsDiv.querySelectorAll('.tournament-item').forEach(item => {
     const tournamentId = parseInt(item.dataset.tournamentId, 10);
     item.addEventListener('click', (e) => {
+      if (isEditingTournaments) return;
       if (e.target.classList.contains('remove-tournament')) return;
 
       selectedTournamentId = tournamentId;
