@@ -52,9 +52,7 @@ button:hover {
 .teams-list, .schedule-list {
   border: 1px solid #ddd;
   border-radius: 4px;
-  padding: 10px;
-  max-height: 300px;
-  overflow-y: auto;
+  padding: 10px;  
 }
 
 .team-item, .tournament-item {
@@ -430,8 +428,6 @@ h3 .team-logo, h3 .tournament-logo {
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 10px;
-  max-height: 200px;
-  overflow-y: auto;
 }
 
 .tournament-item:hover {
@@ -500,8 +496,6 @@ h3 .team-logo, h3 .tournament-logo {
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 10px;
-  max-height: 300px;
-  overflow-y: auto;
 }
 
 .standings-header {

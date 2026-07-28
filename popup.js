@@ -512,6 +512,23 @@ async function displayTeamSchedule(teamId) {
       `;
     };
 
+    const filteredPastData = (pastData || []).filter(match => {
+      const opponents = match.opponents?.map(o => o.opponent).filter(Boolean) || [];
+      const selectedOpponent = opponents.find(o => o?.id === teamId) || team;
+      const otherOpponent = opponents.find(o => o?.id !== teamId) || null;
+      const teamAScore = match.results?.find(r => r.team_id === selectedOpponent?.id)?.score ?? 0;
+      const teamBScore = match.results?.find(r => r.team_id === otherOpponent?.id)?.score ?? 0;
+      return !(teamAScore === 0 && teamBScore === 0);
+    });
+    const reversedPastData = [...filteredPastData].reverse();
+
+    if (reversedPastData.length > 0) {
+      html += '<h4>Trận đấu gần đây</h4>';
+      reversedPastData.forEach(match => { html += buildTeamHistoryRow(match, { includeResult: true }); });
+    } else {
+      html += '<div class="no-matches">Không có trận đấu gần đây</div>';
+    }
+
     if (liveData && liveData.length > 0) {
       html += '<h4>Trận đấu đang diễn ra</h4>';
       liveData.forEach(match => {
@@ -556,23 +573,6 @@ async function displayTeamSchedule(teamId) {
       });
     } else {
       html += '<div class="no-matches">Không có trận đấu đang diễn ra</div>';
-    }
-
-    const filteredPastData = (pastData || []).filter(match => {
-      const opponents = match.opponents?.map(o => o.opponent).filter(Boolean) || [];
-      const selectedOpponent = opponents.find(o => o?.id === teamId) || team;
-      const otherOpponent = opponents.find(o => o?.id !== teamId) || null;
-      const teamAScore = match.results?.find(r => r.team_id === selectedOpponent?.id)?.score ?? 0;
-      const teamBScore = match.results?.find(r => r.team_id === otherOpponent?.id)?.score ?? 0;
-      return !(teamAScore === 0 && teamBScore === 0);
-    });
-    const reversedPastData = [...filteredPastData].reverse();
-
-    if (reversedPastData.length > 0) {
-      html += '<h4>Trận đấu gần đây</h4>';
-      reversedPastData.forEach(match => { html += buildTeamHistoryRow(match, { includeResult: true }); });
-    } else {
-      html += '<div class="no-matches">Không có trận đấu gần đây</div>';
     }
 
     if (upcomingData && upcomingData.length > 0) {
@@ -695,124 +695,75 @@ async function displayTournamentSchedule(tournamentId) {
         ${tournament.name}
       </h3>`;
       
-    if (liveData && liveData.length > 0) {
-      html += '<h4>Trận đấu đang diễn ra</h4>';
-      liveData.forEach(match => {
-        try {
-          const team1 = match.opponents?.[0]?.opponent;
-          const team2 = match.opponents?.[1]?.opponent;
-          const team1Name = team1?.name || 'Chưa xác định';
-          const team2Name = team2?.name || 'Chưa xác định';
-          const team1Logo = team1?.image_url || 'https://via.placeholder.com/24';
-          const team2Logo = team2?.image_url || 'https://via.placeholder.com/24';
-          const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'Chưa xác định';
-          const team1Score = match.results?.find(r => r.team_id === team1?.id)?.score || 0;
-          const team2Score = match.results?.find(r => r.team_id === team2?.id)?.score || 0;
-          const currentGame = team1Score + team2Score + 1;
+    const buildTournamentRow = (match, statusType) => {
+      const opponents = match.opponents?.map(o => o.opponent).filter(Boolean) || [];
+      const team1 = opponents[0] || { name: 'Chưa xác định', image_url: 'https://via.placeholder.com/24' };
+      const team2 = opponents[1] || { name: 'Chưa xác định', image_url: 'https://via.placeholder.com/24' };
 
-          html += `
-            <div class="schedule-item live">
-              <div class="match-teams">
-                <div class="team-info">
-                  <img class="team-logo" src="${team1Logo}" alt="${team1Name} logo">
-                  <span>${team1Name}</span>
-                </div>
-                <div class="match-score">
-                  <span class="score">${team1Score}</span>
-                  <span class="vs">-</span>
-                  <span class="score">${team2Score}</span>
-                </div>
-                <div class="team-info">
-                  <img class="team-logo" src="${team2Logo}" alt="${team2Name} logo">
-                  <span>${team2Name}</span>
-                </div>
-              </div>
-              <div class="match-details">
-                <span class="match-type">${matchType}</span>
-                <span class="match-status">Đang diễn ra - Ván ${currentGame}</span>
+      const team1Logo = team1.image_url || 'https://via.placeholder.com/24';
+      const team1Name = team1.acronym || team1.name || 'Chưa xác định';
+      const team2Logo = team2.image_url || 'https://via.placeholder.com/24';
+      const team2Name = team2.acronym || team2.name || 'Chưa xác định';
+
+      const matchTime = formatDateTime(match.scheduled_at || match.begin_at || match.end_at);
+      const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'BO?';
+
+      let detailLine = matchType;
+      let boToneClass = 'followed-match-bo--positive';
+
+      if (statusType === 'past') {
+        const team1Score = match.results?.find(r => r.team_id === team1.id)?.score ?? '-';
+        const team2Score = match.results?.find(r => r.team_id === team2.id)?.score ?? '-';
+        detailLine = `${team1Score}-${team2Score}`;
+      } else if (statusType === 'live') {
+        const team1Score = match.results?.find(r => r.team_id === team1.id)?.score || 0;
+        const team2Score = match.results?.find(r => r.team_id === team2.id)?.score || 0;
+        detailLine = `${team1Score} - ${team2Score}`;
+        boToneClass = 'followed-match-status';
+      }
+
+      return `
+        <div class="schedule-item ${statusType}">
+          <div class="followed-row-inner">
+            <div class="followed-team-block">
+              <img class="team-logo" src="${team1Logo}" alt="${team1Name} logo">
+              <span class="followed-team-name">${team1Name}</span>
+            </div>
+            <div class="followed-match-detail">
+              <div class="followed-match-time">${matchTime}</div>
+              <div class="followed-match-extra">
+                <span class="followed-match-bo ${boToneClass}">${detailLine}</span>
+                <span class="followed-match-tournament">${matchType}</span>
               </div>
             </div>
-          `;
-        } catch (error) {}
-      });
+            <div class="followed-opponent-block">
+              <span class="followed-opponent-name">${team2Name}</span>
+              <img class="team-logo" src="${team2Logo}" alt="${team2Name} logo">
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    if (pastData && pastData.length > 0) {
+      html += '<h4>Trận đấu gần đây</h4>';
+      pastData.forEach(match => { html += buildTournamentRow(match, 'past'); });
+    } else {
+      html += '<div class="no-matches">Không có trận đấu gần đây</div>';
+    }
+
+    if (liveData && liveData.length > 0) {
+      html += '<h4>Trận đấu đang diễn ra</h4>';
+      liveData.forEach(match => { html += buildTournamentRow(match, 'live'); });
     } else {
       html += '<div class="no-matches">Không có trận đấu đang diễn ra</div>';
     }
 
     if (upcomingData && upcomingData.length > 0) {
       html += '<h4>Trận đấu sắp tới</h4>';
-      upcomingData.forEach(match => {
-        try {
-          const team1 = match.opponents?.[0]?.opponent;
-          const team2 = match.opponents?.[1]?.opponent;
-          const team1Name = team1?.name || 'Chưa xác định';
-          const team2Name = team2?.name || 'Chưa xác định';
-          const team1Logo = team1?.image_url || 'https://via.placeholder.com/24';
-          const team2Logo = team2?.image_url || 'https://via.placeholder.com/24';
-          const matchTime = formatDateTime(match.scheduled_at);
-          const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'Chưa xác định';
-
-          html += `
-            <div class="schedule-item upcoming">
-              <div class="match-teams">
-                <div class="team-info">
-                  <img class="team-logo" src="${team1Logo}" alt="${team1Name} logo">
-                  <span>${team1Name}</span>
-                </div>
-                <span class="vs">vs</span>
-                <div class="team-info">
-                  <img class="team-logo" src="${team2Logo}" alt="${team2Name} logo">
-                  <span>${team2Name}</span>
-                </div>
-              </div>
-              <div class="match-time">${matchTime}</div>
-              <div class="match-type">${matchType}</div>
-            </div>
-          `;
-        } catch (error) {}
-      });
+      upcomingData.forEach(match => { html += buildTournamentRow(match, 'upcoming'); });
     } else {
       html += '<div class="no-matches">Không có trận đấu sắp tới</div>';
-    }
-
-    if (pastData && pastData.length > 0) {
-      html += '<h4>Trận đấu gần đây</h4>';
-      pastData.forEach(match => {
-        try {
-          const team1 = match.opponents?.[0]?.opponent;
-          const team2 = match.opponents?.[1]?.opponent;
-          const team1Name = team1?.name || 'Chưa xác định';
-          const team2Name = team2?.name || 'Chưa xác định';
-          const team1Logo = team1?.image_url || 'https://via.placeholder.com/24';
-          const team2Logo = team2?.image_url || 'https://via.placeholder.com/24';
-          const matchTime = formatDateTime(match.scheduled_at);
-          const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'Chưa xác định';
-          const winner = match.winner?.name || 'Chưa có';
-          const score = match.results?.map(r => r.score).join(' - ') || 'Chưa có';
-
-          html += `
-            <div class="schedule-item past">
-              <div class="match-teams">
-                <div class="team-info">
-                  <img class="team-logo" src="${team1Logo}" alt="${team1Name} logo">
-                  <span>${team1Name}</span>
-                </div>
-                <span class="vs">vs</span>
-                <div class="team-info">
-                  <img class="team-logo" src="${team2Logo}" alt="${team2Name} logo">
-                  <span>${team2Name}</span>
-                </div>
-              </div>
-              <div class="match-time">${matchTime}</div>
-              <div class="match-type">${matchType}</div>
-              <div class="match-result">Kết quả: ${score}</div>
-              <div class="match-winner">Người chiến thắng: ${winner}</div>
-            </div>
-          `;
-        } catch (error) {}
-      });
-    } else {
-      html += '<div class="no-matches">Không có trận đấu gần đây</div>';
     }
 
     tournamentScheduleList.innerHTML = html;
