@@ -446,12 +446,7 @@ h3 .team-logo, h3 .tournament-logo {
 /* Khung nội dung bên dưới (liền mạch với tab active) */
 .tab-content {
   display: none;
-  background: #ffffff;
-  /* border: 1px solid #c4c7c5; */
-  /* border-top: none; */
-  /* border-bottom-left-radius: 8px; */
-  /* border-bottom-right-radius: 8px; */
-  /* padding: 12px; */
+  background: #ffffff;  
   box-sizing: border-box;
 }
 
