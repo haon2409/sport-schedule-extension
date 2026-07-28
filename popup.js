@@ -4,29 +4,126 @@ let selectedTeamId = null;
 let selectedTournamentId = null;
 const API_KEY = 'GjZzmsBmadIp2qYgdmvMjCr0M3MbPX1qN97Te_qOnuAoMaZcr-E';
 const API_URL = 'https://api.pandascore.co';
+const CACHE_DURATION = 60 * 60 * 1000; // 60 phút
+
+// Hàm fetch dữ liệu có tích hợp cache 60 phút
+async function cachedFetch(url) {
+  return new Promise((resolve, reject) => {
+    const cacheKey = 'api_cache_' + url;
+    const now = Date.now();
+    
+    chrome.storage.local.get([cacheKey], async (result) => {
+      const cached = result[cacheKey];
+      if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+        resolve(cached.data);
+        return;
+      }
+
+      try {
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
+          mode: 'cors'
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await response.json();
+        
+        chrome.storage.local.set({ [cacheKey]: { data, timestamp: now } }, () => {
+          updateClearCacheButtonState();
+        });
+        resolve(data);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
+// Cập nhật trạng thái Enable/Disable của nút Xóa cache
+function updateClearCacheButtonState() {
+  const btn = document.getElementById('clearCacheBtn');
+  if (!btn) return;
+
+  chrome.storage.local.get(null, (items) => {
+    const now = Date.now();
+    const hasValidCache = Object.keys(items).some(key => {
+      if (key.startsWith('api_cache_')) {
+        const cached = items[key];
+        return cached && (now - cached.timestamp < CACHE_DURATION);
+      }
+      return false;
+    });
+
+    if (hasValidCache) {
+      btn.removeAttribute('disabled');
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+    } else {
+      btn.setAttribute('disabled', 'true');
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+    }
+  });
+}
+
+// Hàm thực hiện xóa toàn bộ cache API
+async function clearAllCache() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(null, (items) => {
+      const keysToRemove = Object.keys(items).filter(key => key.startsWith('api_cache_'));
+      if (keysToRemove.length > 0) {
+        chrome.storage.local.remove(keysToRemove, () => {
+          updateClearCacheButtonState();
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  });
+}
 
 // Khởi tạo khi popup được mở
 document.addEventListener('DOMContentLoaded', async () => {
   const followedTeamsDiv = document.getElementById('followedTeams');
   followedTeamsDiv.innerHTML = '<div class="loading">Đang tải danh sách đội...</div>';
 
-  // Lấy danh sách đội và giải đấu đã theo dõi từ storage
+  // Chèn nút "Xóa cache" ngay bên cạnh tiêu đề "Lịch thi đấu LOL" (hoặc thẻ tiêu đề chính)
+  const headerTitle = document.querySelector('h1') || document.querySelector('.header-title') || document.querySelector('header');
+  if (headerTitle && !document.getElementById('clearCacheBtn')) {
+    const clearCacheBtn = document.createElement('button');
+    clearCacheBtn.id = 'clearCacheBtn';
+    clearCacheBtn.className = 'clear-cache-btn';
+    clearCacheBtn.textContent = 'Xóa cache';
+    clearCacheBtn.style.marginLeft = '10px';
+    clearCacheBtn.style.padding = '2px 6px';
+    clearCacheBtn.style.fontSize = '11px';
+    clearCacheBtn.style.cursor = 'pointer';
+    
+    clearCacheBtn.addEventListener('click', async () => {
+      await clearAllCache();
+    });
+    
+    headerTitle.appendChild(clearCacheBtn);
+  }
+
+  updateClearCacheButtonState();
+
   chrome.storage.local.get(['followedTeams', 'followedTournaments'], async (result) => {
     if (result.followedTeams) {
       followedTeams = result.followedTeams;
-      await checkMatchesOnPopupOpen(); // Kiểm tra lịch thi đấu đội khi mở popup
+      await checkMatchesOnPopupOpen();
       displayFollowedTeams();
     } else {
-      followedTeamsDiv.innerHTML = ''; // Xóa loading nếu không có đội
+      followedTeamsDiv.innerHTML = '';
     }
     if (result.followedTournaments) {
       followedTournaments = result.followedTournaments;
-      await checkTournamentMatchesOnPopupOpen(); // Kiểm tra lịch thi đấu giải khi mở popup
+      await checkTournamentMatchesOnPopupOpen();
       displayFollowedTournaments();
     }
+    updateClearCacheButtonState();
   });
 
-  // Thêm event listeners
   document.getElementById('searchButton').addEventListener('click', searchTeam);
   document.getElementById('teamSearch').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') searchTeam();
@@ -37,7 +134,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'Enter') searchTournament();
   });
 
-  // Thêm xử lý chuyển đổi tab
   document.querySelectorAll('.tab-button').forEach(button => {
     button.addEventListener('click', () => {
       const container = button.closest('.tabs').parentElement;
@@ -50,7 +146,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
-// Hàm kiểm tra xem ngày có phải hôm nay không
 function isToday(dateString) {
   if (!dateString) return false;
   const matchDate = new Date(dateString);
@@ -70,7 +165,6 @@ function getMatchTournamentName(match) {
   return abbreviations[leagueName] || leagueName;
 }
 
-// Hàm kiểm tra lịch thi đấu đội khi mở popup
 async function checkMatchesOnPopupOpen() {
   try {
     if (!followedTeams || followedTeams.length === 0) return;
@@ -78,25 +172,13 @@ async function checkMatchesOnPopupOpen() {
     const matchInclude = 'opponents.opponent,league,tournament,serie';
 
     const matchPromises = followedTeams.map(async (team) => {
-      const liveResponse = await fetch(
-        `${API_URL}/lol/matches/running?filter[opponent_id]=${team.id}&include=${matchInclude}`,
-        { headers: { 'Authorization': `Bearer ${API_KEY}` } }
-      );
-      const liveData = await liveResponse.json();
+      const liveData = await cachedFetch(`${API_URL}/lol/matches/running?filter[opponent_id]=${team.id}&include=${matchInclude}`);
       if (liveData.length > 0) return { teamId: team.id, match: liveData[0], type: 'live' };
 
-      const upcomingResponse = await fetch(
-        `${API_URL}/lol/matches/upcoming?filter[opponent_id]=${team.id}&per_page=1&sort=begin_at&include=${matchInclude}`,
-        { headers: { 'Authorization': `Bearer ${API_KEY}` } }
-      );
-      const upcomingData = await upcomingResponse.json();
+      const upcomingData = await cachedFetch(`${API_URL}/lol/matches/upcoming?filter[opponent_id]=${team.id}&per_page=1&sort=begin_at&include=${matchInclude}`);
       if (upcomingData.length > 0) return { teamId: team.id, match: upcomingData[0], type: 'upcoming' };
 
-      const pastResponse = await fetch(
-        `${API_URL}/lol/matches/past?filter[opponent_id]=${team.id}&per_page=1&sort=-end_at&include=${matchInclude}`,
-        { headers: { 'Authorization': `Bearer ${API_KEY}` } }
-      );
-      const pastData = await pastResponse.json();
+      const pastData = await cachedFetch(`${API_URL}/lol/matches/past?filter[opponent_id]=${team.id}&per_page=1&sort=-end_at&include=${matchInclude}`);
       if (pastData.length > 0) return { teamId: team.id, match: pastData[0], type: 'past' };
 
       return null;
@@ -119,7 +201,6 @@ async function checkMatchesOnPopupOpen() {
   }
 }
 
-// Hàm kiểm tra lịch thi đấu giải đấu khi mở popup
 async function checkTournamentMatchesOnPopupOpen() {
   try {
     if (!followedTournaments || followedTournaments.length === 0) return;
@@ -127,25 +208,13 @@ async function checkTournamentMatchesOnPopupOpen() {
     const matchInclude = 'opponents.opponent,league,tournament,serie';
 
     const matchPromises = followedTournaments.map(async (tournament) => {
-      const liveResponse = await fetch(
-        `${API_URL}/lol/matches/running?filter[league_id]=${tournament.id}&include=${matchInclude}`,
-        { headers: { 'Authorization': `Bearer ${API_KEY}` } }
-      );
-      const liveData = await liveResponse.json();
+      const liveData = await cachedFetch(`${API_URL}/lol/matches/running?filter[league_id]=${tournament.id}&include=${matchInclude}`);
       if (liveData.length > 0) return { tournamentId: tournament.id, match: liveData[0], type: 'live' };
 
-      const upcomingResponse = await fetch(
-        `${API_URL}/lol/matches/upcoming?filter[league_id]=${tournament.id}&per_page=1&sort=begin_at&include=${matchInclude}`,
-        { headers: { 'Authorization': `Bearer ${API_KEY}` } }
-      );
-      const upcomingData = await upcomingResponse.json();
+      const upcomingData = await cachedFetch(`${API_URL}/lol/matches/upcoming?filter[league_id]=${tournament.id}&per_page=1&sort=begin_at&include=${matchInclude}`);
       if (upcomingData.length > 0) return { tournamentId: tournament.id, match: upcomingData[0], type: 'upcoming' };
 
-      const pastResponse = await fetch(
-        `${API_URL}/lol/matches/past?filter[league_id]=${tournament.id}&per_page=1&sort=-end_at&include=${matchInclude}`,
-        { headers: { 'Authorization': `Bearer ${API_KEY}` } }
-      );
-      const pastData = await pastResponse.json();
+      const pastData = await cachedFetch(`${API_URL}/lol/matches/past?filter[league_id]=${tournament.id}&per_page=1&sort=-end_at&include=${matchInclude}`);
       if (pastData.length > 0) return { tournamentId: tournament.id, match: pastData[0], type: 'past' };
 
       return null;
@@ -169,12 +238,10 @@ async function checkTournamentMatchesOnPopupOpen() {
   }
 }
 
-// Hàm xử lý lỗi ảnh
 function handleImageError(img) {
   img.src = 'https://via.placeholder.com/24';
 }
 
-// Hàm tạo HTML dùng chung cho Đội tuyển
 function createFollowedItemHTML(item, type = 'team') {
   const displayName = item.acronym || item.name;
   const logoUrl = item.image_url || 'https://via.placeholder.com/24';
@@ -228,7 +295,6 @@ function createFollowedItemHTML(item, type = 'team') {
     </div>`;
 }
 
-// Hàm tạo HTML hiển thị hàng giải đấu đang theo dõi
 function createTournamentFollowedItemHTML(tournament) {
   const matchData = tournament.matchData;
   const tournamentName = tournament.acronym || tournament.name;
@@ -282,7 +348,6 @@ function createTournamentFollowedItemHTML(tournament) {
     </div>`;
 }
 
-// Hàm tiện ích định dạng thời gian
 function formatDateTime(dateString) {
   if (!dateString) return 'Chưa xác định';
   const date = new Date(dateString);
@@ -297,7 +362,6 @@ function formatDateTime(dateString) {
   return `${hours}:${minutes}, ${weekday}, ${day}/${month}`;
 }
 
-// Hàm tìm kiếm đội tuyển
 async function searchTeam() {
   const searchInput = document.getElementById('teamSearch');
   const teamName = searchInput.value.trim();
@@ -307,20 +371,10 @@ async function searchTeam() {
   if (oldSearchResults) oldSearchResults.remove();
 
   try {
-    let response = await fetch(`${API_URL}/lol/teams?search[name]=${encodeURIComponent(teamName)}&per_page=10`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
-      mode: 'cors'
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    let data = await response.json();
+    let data = await cachedFetch(`${API_URL}/lol/teams?search[name]=${encodeURIComponent(teamName)}&per_page=10`);
 
     if (data.length === 0) {
-      response = await fetch(`${API_URL}/lol/teams?search[acronym]=${encodeURIComponent(teamName)}&per_page=10`, {
-        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
-        mode: 'cors'
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      data = await response.json();
+      data = await cachedFetch(`${API_URL}/lol/teams?search[acronym]=${encodeURIComponent(teamName)}&per_page=10`);
     }
 
     if (data.length > 0) {
@@ -356,7 +410,6 @@ async function searchTeam() {
   }
 }
 
-// Hàm tìm kiếm giải đấu
 async function searchTournament() {
   const searchInput = document.getElementById('tournamentSearch');
   const tournamentName = searchInput.value.trim();
@@ -366,20 +419,10 @@ async function searchTournament() {
   if (oldSearchResults) oldSearchResults.remove();
 
   try {
-    let response = await fetch(`${API_URL}/lol/tournaments?search[name]=${encodeURIComponent(tournamentName)}&per_page=10`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
-      mode: 'cors'
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    let data = await response.json();
+    let data = await cachedFetch(`${API_URL}/lol/tournaments?search[name]=${encodeURIComponent(tournamentName)}&per_page=10`);
 
     if (data.length === 0) {
-      response = await fetch(`${API_URL}/lol/leagues?search[name]=${encodeURIComponent(tournamentName)}&per_page=10`, {
-        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
-        mode: 'cors'
-      });
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      data = await response.json();
+      data = await cachedFetch(`${API_URL}/lol/leagues?search[name]=${encodeURIComponent(tournamentName)}&per_page=10`);
     }
 
     if (data.length > 0) {
@@ -434,7 +477,6 @@ async function searchTournament() {
   }
 }
 
-// Hàm hiển thị danh sách đội đang theo dõi
 function displayFollowedTeams() {
   const followedTeamsDiv = document.getElementById('followedTeams');
   
@@ -511,7 +553,6 @@ function displayFollowedTeams() {
   });
 }
 
-// Hàm hiển thị danh sách giải đấu đang theo dõi
 function displayFollowedTournaments() {
   const followedTournamentsDiv = document.getElementById('followedTournaments');
   
@@ -582,7 +623,6 @@ function displayFollowedTournaments() {
   });
 }
 
-// Hàm hiển thị lịch thi đấu của đội (Thứ tự: gần đây -> đang diễn ra -> sắp tới)
 async function displayTeamSchedule(teamId) {
   const scheduleList = document.getElementById('scheduleList');
   const scheduleSection = document.querySelector('.schedule-section');
@@ -592,27 +632,13 @@ async function displayTeamSchedule(teamId) {
   try {
     let team = followedTeams.find(t => t.id === teamId);
     if (!team) {
-      const teamResponse = await fetch(`${API_URL}/teams/${teamId}`, {
-        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-      });
-      if (teamResponse.ok) team = await teamResponse.json();
+      team = await cachedFetch(`${API_URL}/teams/${teamId}`);
     }
     if (!team) team = { name: 'Đội tuyển', image_url: null };
 
-    const liveResponse = await fetch(`${API_URL}/lol/matches/running?filter[opponent_id]=${teamId}&include=opponents.opponent,league,tournament,serie`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    const liveData = await liveResponse.json();
-
-    const upcomingResponse = await fetch(`${API_URL}/lol/matches/upcoming?filter[opponent_id]=${teamId}&per_page=5&include=opponents.opponent,league,tournament,serie`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    const upcomingData = await upcomingResponse.json();
-
-    const pastResponse = await fetch(`${API_URL}/lol/matches/past?filter[opponent_id]=${teamId}&per_page=5&sort=-end_at&include=opponents.opponent,league,tournament,serie`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    const pastData = await pastResponse.json();
+    const liveData = await cachedFetch(`${API_URL}/lol/matches/running?filter[opponent_id]=${teamId}&include=opponents.opponent,league,tournament,serie`);
+    const upcomingData = await cachedFetch(`${API_URL}/lol/matches/upcoming?filter[opponent_id]=${teamId}&per_page=5&include=opponents.opponent,league,tournament,serie`);
+    const pastData = await cachedFetch(`${API_URL}/lol/matches/past?filter[opponent_id]=${teamId}&per_page=5&sort=-end_at&include=opponents.opponent,league,tournament,serie`);
 
     let html = '';
 
@@ -740,7 +766,6 @@ async function displayTeamSchedule(teamId) {
   }
 }
 
-// Hàm hiển thị lịch thi đấu của giải
 async function displayTournamentSchedule(tournamentId) {
   const tournament = followedTournaments.find(t => t.id === tournamentId);
   const tournamentScheduleList = document.getElementById('tournamentScheduleList');
@@ -749,20 +774,9 @@ async function displayTournamentSchedule(tournamentId) {
   tournamentScheduleList.innerHTML = '<div class="loading">Đang tải lịch thi đấu...</div>';
 
   try {
-    const liveResponse = await fetch(`${API_URL}/lol/matches/running?filter[league_id]=${tournament.id}&include=opponents.opponent,league,tournament,serie`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    const liveData = await liveResponse.json();
-
-    const upcomingResponse = await fetch(`${API_URL}/lol/matches/upcoming?filter[league_id]=${tournament.id}&per_page=5&include=opponents.opponent,league,tournament,serie`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    const upcomingData = await upcomingResponse.json();
-
-    const pastResponse = await fetch(`${API_URL}/lol/matches/past?filter[league_id]=${tournament.id}&per_page=5&include=opponents.opponent,league,tournament,serie`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    const pastData = await pastResponse.json();
+    const liveData = await cachedFetch(`${API_URL}/lol/matches/running?filter[league_id]=${tournament.id}&include=opponents.opponent,league,tournament,serie`);
+    const upcomingData = await cachedFetch(`${API_URL}/lol/matches/upcoming?filter[league_id]=${tournament.id}&per_page=5&include=opponents.opponent,league,tournament,serie`);
+    const pastData = await cachedFetch(`${API_URL}/lol/matches/past?filter[league_id]=${tournament.id}&per_page=5&include=opponents.opponent,league,tournament,serie`);
 
     let html = '';
       
@@ -844,7 +858,6 @@ async function displayTournamentSchedule(tournamentId) {
   }
 }
 
-// Hàm hiển thị bảng xếp hạng của giải
 async function displayTournamentStandings(leagueId) {
   const tournamentInfo = followedTournaments.find(t => t.id === leagueId);
   const standingsList = document.getElementById('tournamentStandingsList');
@@ -853,11 +866,7 @@ async function displayTournamentStandings(leagueId) {
   standingsList.innerHTML = '<div class="loading">Đang tải bảng xếp hạng...</div>';
 
   try {
-    const seriesResponse = await fetch(`${API_URL}/lol/series?filter[league_id]=${leagueId}&sort=-begin_at`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    if (!seriesResponse.ok) throw new Error(`HTTP error! status: ${seriesResponse.status}`);
-    const seriesData = await seriesResponse.json();
+    const seriesData = await cachedFetch(`${API_URL}/lol/series?filter[league_id]=${leagueId}&sort=-begin_at`);
 
     if (!seriesData || seriesData.length === 0 || !seriesData[0].tournaments || seriesData[0].tournaments.length === 0) {
       standingsList.innerHTML = '<div class="no-data">Không có dữ liệu giải đấu hiện tại</div>';
@@ -865,18 +874,10 @@ async function displayTournamentStandings(leagueId) {
     }
 
     const actualTournamentId = seriesData[0].tournaments[0].id;
-    const standingsResponse = await fetch(`${API_URL}/tournaments/${actualTournamentId}/standings`, {
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' }
-    });
-    if (!standingsResponse.ok) throw new Error(`HTTP error! status: ${standingsResponse.status}`);
-    const data = await standingsResponse.json();
+    const data = await cachedFetch(`${API_URL}/tournaments/${actualTournamentId}/standings`);
 
     if (data && data.length > 0) {
       let html = `
-        <h3>
-          <img class="tournament-logo" src="${tournamentInfo.image_url || 'https://via.placeholder.com/24'}" alt="${tournamentInfo.name} logo" onerror="this.src='https://via.placeholder.com/24'">
-          ${tournamentInfo.name}
-        </h3>
         <div class="standings-header">
           <div class="standings-rank">#</div>
           <div class="standings-team">Đội</div>
@@ -920,7 +921,6 @@ async function displayTournamentStandings(leagueId) {
   }
 }
 
-// Hàm xóa đội khỏi danh sách theo dõi
 function removeTeam(teamId) {
   followedTeams = followedTeams.filter(team => team.id !== teamId);
   if (selectedTeamId === teamId) selectedTeamId = null;
@@ -928,7 +928,6 @@ function removeTeam(teamId) {
   displayFollowedTeams();
 }
 
-// Hàm xóa giải đấu khỏi danh sách theo dõi
 function removeTournament(tournamentId) {
   followedTournaments = followedTournaments.filter(t => t.id !== tournamentId);
   if (selectedTournamentId === tournamentId) selectedTournamentId = null;
@@ -941,6 +940,5 @@ function removeTournament(tournamentId) {
   if (tournamentStandingsList) tournamentStandingsList.innerHTML = '';
 }
 
-// Hàm lưu dữ liệu
 function saveFollowedTeams() { chrome.storage.local.set({ followedTeams }); }
 function saveFollowedTournaments() { chrome.storage.local.set({ followedTournaments }); }
