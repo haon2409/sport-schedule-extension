@@ -674,3 +674,22 @@ h3 .team-logo, h3 .tournament-logo {
 .tab-button[disabled]:hover {
   background-color: #f0f0f0; /* Ngăn hiệu ứng hover khi bị disable */
 }
+
+/* Hiệu ứng kéo thả danh sách đội tuyển */
+.team-item.draggable {
+  cursor: grab;
+}
+
+.team-item.draggable:active {
+  cursor: grabbing;
+}
+
+.team-item.dragging {
+  opacity: 0.4;
+  background-color: #e0e0e0;
+  border: 2px dashed #2196f3;
+}
+
+.team-item.drag-over {
+  border-top: 2px solid #2196f3;
+}

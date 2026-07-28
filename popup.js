@@ -2,6 +2,8 @@ let followedTeams = [];
 let followedTournaments = [];
 let selectedTeamId = null;
 let selectedTournamentId = null;
+let originalFollowedTeams = []; // Biến lưu bản sao để khôi phục khi Cancel
+let isEditingTeams = false;
 const API_URL = 'https://api.pandascore.co';
 const CACHE_DURATION = 60 * 60 * 1000;
 
@@ -145,6 +147,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     actionContainer.appendChild(settingsBtn);
     actionContainer.appendChild(clearCacheBtn);
     headerTitle.appendChild(actionContainer);
+      
+      const editBtn = document.getElementById('editTeamsBtn');
+        const saveBtn = document.getElementById('saveTeamsBtn');
+        const cancelBtn = document.getElementById('cancelTeamsBtn');
+        const actionBtnsDiv = document.getElementById('teamEditActionBtns');
+
+        if (editBtn) {
+          editBtn.addEventListener('click', () => {
+            isEditingTeams = true;
+            originalFollowedTeams = JSON.parse(JSON.stringify(followedTeams)); // Sao lưu dữ liệu hiện tại
+            editBtn.style.display = 'none';
+            actionBtnsDiv.style.display = 'flex';
+            displayFollowedTeams(); // Render lại để bật trạng thái kéo thả
+          });
+        }
+
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', () => {
+            isEditingTeams = false;
+            followedTeams = JSON.parse(JSON.stringify(originalFollowedTeams)); // Khôi phục dữ liệu cũ
+            actionBtnsDiv.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+            displayFollowedTeams();
+          });
+        }
+
+        if (saveBtn) {
+          saveBtn.addEventListener('click', () => {
+            isEditingTeams = false;
+            actionBtnsDiv.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+            saveFollowedTeams(); // Lưu vào storage
+            displayFollowedTeams();
+          });
+        }
   }
 
   updateClearCacheButtonState();
@@ -521,7 +558,7 @@ async function searchTournament() {
 function displayFollowedTeams() {
   const followedTeamsDiv = document.getElementById('followedTeams');
   
-  const sortedTeams = [...followedTeams].sort((a, b) => {
+  const sortedTeams = isEditingTeams ? followedTeams : [...followedTeams].sort((a, b) => {
     const getPriority = (team) => {
       if (!team.matchData) return 4;
       const status = team.matchData.status;
@@ -536,7 +573,7 @@ function displayFollowedTeams() {
 
     if (priorityA !== priorityB) return priorityA - priorityB;
 
-    if (priorityA === 2) { 
+    if (priorityA === 2) {
       return new Date(a.matchData.matchTime) - new Date(b.matchData.matchTime);
     }
     if (priorityA === 3) {
@@ -547,18 +584,55 @@ function displayFollowedTeams() {
 
   followedTeamsDiv.innerHTML = sortedTeams.length === 0
     ? '<div class="no-data">Chưa theo dõi đội nào</div>'
-    : sortedTeams.map(team => {
+    : sortedTeams.map((team, index) => {
         const html = createFollowedItemHTML(team, 'team');
         const hasMatchToday = team.matchData && isToday(team.matchData.matchTime) && team.matchData.type !== 'past';
         const todayClass = hasMatchToday ? 'match-today' : '';
         const selectedClass = selectedTeamId === team.id ? 'selected' : '';
+        const draggableAttr = isEditingTeams ? 'draggable="true"' : '';
+        const draggableClass = isEditingTeams ? 'draggable' : '';
         
         return `
-          <div class="team-item ${todayClass} ${selectedClass}" data-team-id="${team.id}">
+          <div class="team-item ${todayClass} ${selectedClass} ${draggableClass}" ${draggableAttr} data-index="${index}" data-team-id="${team.id}">
             ${html}
             <span class="remove-team" data-team-id="${team.id}">✖</span>
           </div>`;
       }).join('');
+
+  if (isEditingTeams) {
+    let draggedIndex = null;
+
+    followedTeamsDiv.querySelectorAll('.team-item').forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        draggedIndex = parseInt(e.currentTarget.dataset.index, 10);
+        e.currentTarget.classList.add('dragging');
+      });
+
+      item.addEventListener('dragend', (e) => {
+        e.currentTarget.classList.remove('dragging');
+        followedTeamsDiv.querySelectorAll('.team-item').forEach(el => el.classList.remove('drag-over'));
+      });
+
+      item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.currentTarget.classList.add('drag-over');
+      });
+
+      item.addEventListener('dragleave', (e) => {
+        e.currentTarget.classList.remove('drag-over');
+      });
+
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const targetIndex = parseInt(e.currentTarget.dataset.index, 10);
+        if (draggedIndex !== null && draggedIndex !== targetIndex) {
+          const movedItem = followedTeams.splice(draggedIndex, 1)[0];
+          followedTeams.splice(targetIndex, 0, movedItem);
+          displayFollowedTeams();
+        }
+      });
+    });
+  }
 
   followedTeamsDiv.querySelectorAll('.team-item img.team-logo').forEach(img => {
     img.addEventListener('error', () => handleImageError(img));
@@ -567,6 +641,7 @@ function displayFollowedTeams() {
   followedTeamsDiv.querySelectorAll('.team-item').forEach(el => {
     const followedId = parseInt(el.dataset.teamId, 10);
     el.querySelector('.followed-team-block')?.addEventListener('click', (e) => {
+      if (isEditingTeams) return;
       e.stopPropagation();
       selectedTeamId = followedId;
       displayFollowedTeams();
@@ -575,6 +650,7 @@ function displayFollowedTeams() {
     const opponentEl = el.querySelector('.followed-opponent-block:not(.followed-opponent-block--empty)');
     if (opponentEl) {
       opponentEl.addEventListener('click', (e) => {
+        if (isEditingTeams) return;
         e.stopPropagation();
         const oid = opponentEl.dataset.opponentId;
         if (oid) {
