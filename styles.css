@@ -388,38 +388,74 @@ h3 .team-logo, h3 .tournament-logo {
   background-color: #45a049;
 }
 
+/* Khung chứa các tab (phần thanh tab) */
 .tabs {
   display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 10px;
+  width: 100%;
+  background: #dfe1e5; 
+  padding: 8px 8px 0 8px;
+  gap: 4px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #c4c7c5;
 }
 
+/* Kiểu dáng chung cho các tab (bo tròn cạnh trên giống Chrome) */
 .tab-button {
-  padding: 8px 16px;
-  background-color: #f5f5f5;
-  color: #666;
+  flex: 1;
+  width: 50%;
+  text-align: center;
+  padding: 8px 12px;
+  background: transparent;
   border: none;
-  border-radius: 4px;
+  color: #5f6368;
+  font-weight: 500;
+  font-size: 13px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  transition: background 0.2s ease;
+  position: relative;
 }
 
+/* Hiệu ứng hover cho tab không active */
 .tab-button:hover {
-  background-color: #e0e0e0;
+  background: rgba(255, 255, 255, 0.4);
+  color: #202124;
 }
 
+/* Tab Active: Đồng nhất màu với khung nội dung để tạo cảm giác liền mạch */
 .tab-button.active {
-  background-color: #4CAF50;
-  color: white;
+  background: #ffffff; 
+  color: #1a73e8;
+  font-weight: 600;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.08);
+  z-index: 2;
 }
 
+/* Đường che khuất viền dưới của tab active để kết nối hoàn toàn với nội dung */
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ffffff;
+}
+
+/* Khung nội dung bên dưới (liền mạch với tab active) */
 .tab-content {
   display: none;
+  background: #ffffff;
+  /* border: 1px solid #c4c7c5; */
+  /* border-top: none; */
+  /* border-bottom-left-radius: 8px; */
+  /* border-bottom-right-radius: 8px; */
+  /* padding: 12px; */
+  box-sizing: border-box;
 }
 
+/* Chỉ hiển thị nội dung khi tab có class active */
 .tab-content.active {
   display: block;
 }
