@@ -31,7 +31,7 @@ export function createTournamentFollowedItemHTML(tournament) {
       </div>`;
   }
 
-  const matchesHtml = matchData.matches.map(match => {
+  const matchesHtml = matchData.matches.map((match, index) => {
     const opponents = match?.opponents?.map(o => o.opponent).filter(Boolean) || [];
     const team1 = opponents[0] || null;
     const team2 = opponents[1] || null;
@@ -42,27 +42,51 @@ export function createTournamentFollowedItemHTML(tournament) {
     const team2Logo = team2?.image_url || 'https://via.placeholder.com/16';
 
     const matchTime = formatDateTime(match.scheduled_at || match.begin_at || match.end_at);
-    const timeOnly = matchTime.split(',')[0].trim();
     const matchType = match.number_of_games ? `BO${match.number_of_games}` : '—';
 
+    const isLive = (index === 0 && matchData.status === 'Đang diễn ra');
+    
+    let centerContent = '';
+    if (isLive) {
+      const team1Score = match.results?.find(r => r.team_id === team1?.id)?.score ?? 0;
+      const team2Score = match.results?.find(r => r.team_id === team2?.id)?.score ?? 0;
+      centerContent = `
+        <span style="color: #666; font-size: 10px;">${matchTime}</span>
+        <div>
+          <span style="color: #2e7d32; font-weight: bold; font-size: 12px;">${team1Score} - ${team2Score}</span>
+          <span style="color: #666; margin-left: 3px; font-size: 10px;">${matchType}</span>
+        </div>
+      `;
+    } else {
+      const timeOnly = matchTime.split(',')[0].trim();
+      centerContent = `
+        <span style="color: #666; font-size: 10px;">${matchTime}</span>
+        <div>
+          <span style="font-weight: 500; font-size: 11px;">${timeOnly}</span>
+          <span style="color: #666; margin-left: 3px; font-size: 10px;">${matchType}</span>
+        </div>
+      `;
+    }
+
     return `
-      <div class="tournament-match-row" style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 6px; font-size: 11px; gap: 8px;">
-        <span style="color: #666; margin-right: 4px;">${timeOnly} (${matchType})</span>
-        <div style="display: flex; align-items: center; gap: 3px;">
+      <div class="tournament-match-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; width: 100%; font-size: 11px;">
+        <div style="display: flex; align-items: center; gap: 4px;">
           <img class="team-logo" src="${team1Logo}" alt="${team1Name}" style="width: 14px; height: 14px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/14'">
           <span style="font-weight: 500;">${team1Name}</span>
         </div>
-        <span style="color: #888;">vs</span>
-        <div style="display: flex; align-items: center; gap: 3px;">
-          <img class="team-logo" src="${team2Logo}" alt="${team2Name}" style="width: 14px; height: 14px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/14'">
+        <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+          ${centerContent}
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px;">
           <span style="font-weight: 500;">${team2Name}</span>
+          <img class="team-logo" src="${team2Logo}" alt="${team2Name}" style="width: 14px; height: 14px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/14'">
         </div>
       </div>
     `;
   }).join('');
 
   const rightBlock = `
-    <div class="followed-opponent-block" style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center;">
+    <div class="followed-opponent-block" style="display: flex; flex-direction: column; align-items: flex-end; justify-content: center; width: 65%;">
       ${matchesHtml}
     </div>`;
 
@@ -93,14 +117,19 @@ export async function checkTournamentMatchesOnPopupOpen() {
     const endISO = endOfDay.toISOString();
 
     const matchPromises = followedTournaments.map(async (tournament) => {
-      const liveData = await cachedFetch(`${API_URL}/lol/matches/running?filter[league_id]=${tournament.id}&include=${matchInclude}`);
-      if (liveData.length > 0) {
-        return { tournamentId: tournament.id, matches: liveData, type: 'live' };
-      }
+      const [liveData, todayMatches] = await Promise.all([
+        cachedFetch(`${API_URL}/lol/matches/running?filter[league_id]=${tournament.id}&include=${matchInclude}`),
+        cachedFetch(`${API_URL}/lol/matches/upcoming?filter[league_id]=${tournament.id}&range[begin_at]=${startISO},${endISO}&sort=begin_at&include=${matchInclude}`)
+      ]);
 
-      const todayMatches = await cachedFetch(`${API_URL}/lol/matches/upcoming?filter[league_id]=${tournament.id}&range[begin_at]=${startISO},${endISO}&sort=begin_at&include=${matchInclude}`);
-      if (todayMatches.length > 0) {
-        return { tournamentId: tournament.id, matches: todayMatches, type: 'today' };
+      const matchMap = new Map();
+      [...(liveData || []), ...(todayMatches || [])].forEach(m => {
+        matchMap.set(m.id, m);
+      });
+      const combinedMatches = Array.from(matchMap.values());
+
+      if (combinedMatches.length > 0) {
+        return { tournamentId: tournament.id, matches: combinedMatches, type: liveData.length > 0 ? 'live' : 'today' };
       }
 
       const upcomingData = await cachedFetch(`${API_URL}/lol/matches/upcoming?filter[league_id]=${tournament.id}&per_page=1&sort=begin_at&include=${matchInclude}`);
