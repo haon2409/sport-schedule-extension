@@ -1,5 +1,5 @@
 export const API_URL = 'https://api.pandascore.co';
-export const CACHE_DURATION = 60 * 60 * 1000;
+export const CACHE_DURATION = 60 * 60 * 1000; // 1 giờ
 
 export async function getApiKey() {
   return new Promise((resolve) => {
@@ -12,7 +12,7 @@ export async function getApiKey() {
 export async function cachedFetch(url) {
   const API_KEY = await getApiKey();
   if (!API_KEY) {
-    throw new Error('Chưa cấu hình API Key. Vui lòng bấm chuột phải vào icon tiện ích -> Options để cài đặt.');
+    throw new Error('NO_API_KEY');
   }
 
   return new Promise((resolve, reject) => {
@@ -28,21 +28,57 @@ export async function cachedFetch(url) {
 
       try {
         const response = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${API_KEY}`, 'Accept': 'application/json' },
+          headers: {
+            'Authorization': `Bearer ${API_KEY}`,
+            'Accept': 'application/json'
+          },
           mode: 'cors'
         });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
 
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('INVALID_API_KEY');
+        }
+        if (response.status === 429) {
+          throw new Error('RATE_LIMIT');
+        }
+        if (!response.ok) {
+          throw new Error(`HTTP_${response.status}`);
+        }
+
+        const data = await response.json();
         chrome.storage.local.set({ [cacheKey]: { data, timestamp: now } }, () => {
           updateClearCacheButtonState();
         });
         resolve(data);
       } catch (error) {
-        reject(error);
+        if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+          reject(new Error('NETWORK_ERROR'));
+        } else {
+          reject(error);
+        }
       }
     });
   });
+}
+
+/** Map mã lỗi → message tiếng Việt */
+export function getErrorMessage(error) {
+  const code = error?.message || String(error) || '';
+  switch (code) {
+    case 'NO_API_KEY':
+      return 'Chưa cấu hình API Key. Vào Options để cài đặt.';
+    case 'INVALID_API_KEY':
+      return 'API Key không hợp lệ hoặc đã hết hạn.';
+    case 'RATE_LIMIT':
+      return 'Đã vượt giới hạn request. Thử lại sau vài phút.';
+    case 'NETWORK_ERROR':
+      return 'Mất kết nối mạng. Kiểm tra internet và thử lại.';
+    default:
+      if (code.startsWith('HTTP_')) {
+        return `Lỗi server (${code.replace('HTTP_', '')}). Thử lại sau.`;
+      }
+      return `Lỗi: ${code || 'Không xác định'}`;
+  }
 }
 
 export function updateClearCacheButtonState() {

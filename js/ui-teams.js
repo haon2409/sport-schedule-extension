@@ -1,4 +1,4 @@
-import { API_URL, cachedFetch } from './api.js';
+import { API_URL, cachedFetch, getErrorMessage } from './api.js';
 import {
   followedTeams, selectedTeamId, isEditingTeams, originalFollowedTeams,
   setFollowedTeams, setSelectedTeamId, setIsEditingTeams, setOriginalFollowedTeams
@@ -143,6 +143,13 @@ export async function searchTeam() {
     }
   } catch (error) {
     console.error('Lỗi khi tìm kiếm đội:', error);
+    const followedTeamsDiv = document.getElementById('followedTeams');
+    const old = document.querySelector('.search-results');
+    if (old) old.remove();
+    const errDiv = document.createElement('div');
+    errDiv.className = 'search-results';
+    errDiv.innerHTML = `<div class="error">${getErrorMessage(error)}</div>`;
+    followedTeamsDiv.parentNode.insertBefore(errDiv, followedTeamsDiv);
   }
 }
 

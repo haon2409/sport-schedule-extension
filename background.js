@@ -34,31 +34,38 @@ async function checkMatches() {
       return;
     }
 
-    const today = new Date();
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+
     let nearestMatchTime = null;
 
     for (const team of followedTeams) {
+      // Live
       const liveResponse = await fetch(
         `${API_URL}/lol/matches/running?filter[opponent_id]=${team.id}`,
         { headers: { 'Authorization': `Bearer ${API_KEY}` } }
       );
-      const liveData = await liveResponse.json();
-      if (liveData.length > 0) {
-        nearestMatchTime = new Date(liveData[0].begin_at || Date.now());
-        break;
+      if (liveResponse.ok) {
+        const liveData = await liveResponse.json();
+        if (liveData.length > 0) {
+          nearestMatchTime = new Date(liveData[0].begin_at || Date.now());
+          break;
+        }
       }
 
+      // Upcoming hôm nay
       const upcomingResponse = await fetch(
         `${API_URL}/lol/matches/upcoming?filter[opponent_id]=${team.id}&range[begin_at]=${startOfDay},${endOfDay}`,
         { headers: { 'Authorization': `Bearer ${API_KEY}` } }
       );
-      const upcomingData = await upcomingResponse.json();
-      if (upcomingData.length > 0) {
-        const matchTime = new Date(upcomingData[0].scheduled_at);
-        if (!nearestMatchTime || matchTime < nearestMatchTime) {
-          nearestMatchTime = matchTime;
+      if (upcomingResponse.ok) {
+        const upcomingData = await upcomingResponse.json();
+        if (upcomingData.length > 0) {
+          const matchTime = new Date(upcomingData[0].scheduled_at || upcomingData[0].begin_at);
+          if (!nearestMatchTime || matchTime < nearestMatchTime) {
+            nearestMatchTime = matchTime;
+          }
         }
       }
     }
@@ -78,25 +85,22 @@ function updateBadge(matchTime) {
 
   const date = new Date(matchTime);
   const hours = date.getHours();
-  const minutes = date.getMinutes();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
   let badgeText = '';
   let backgroundColor = '';
 
-  if (hours >= 0 && hours <= 12) {
-    backgroundColor = '#00FF00';
-    if (hours < 10) {
-      badgeText = `${hours}:${minutes === 0 ? '00' : '30'}`;
-    } else {
-      badgeText = minutes === 0 ? `${hours}` : `${hours}${minutes}`;
-    }
+  if (hours >= 0 && hours < 12) {
+    backgroundColor = '#00AA00';
+    badgeText = hours < 10 ? `${hours}:${minutes}` : `${hours}${minutes}`;
   } else {
-    backgroundColor = '#FF0000';
-    const displayHours = hours - 12;
-    if (displayHours < 10) {
-      badgeText = `${displayHours}:${minutes === 0 ? '00' : '30'}`;
-    } else {
-      badgeText = minutes === 0 ? `${displayHours}` : `${displayHours}${minutes}`;
-    }
+    backgroundColor = '#DD0000';
+    const displayHours = hours === 12 ? 12 : hours - 12;
+    badgeText = displayHours < 10 ? `${displayHours}:${minutes}` : `${displayHours}${minutes}`;
+  }
+
+  // Giới hạn badge text (Chrome max ~4 ký tự đẹp)
+  if (badgeText.length > 4) {
+    badgeText = `${hours}:${minutes}`.slice(0, 4);
   }
 
   chrome.action.setBadgeText({ text: badgeText });

@@ -1,4 +1,4 @@
-import { API_URL, cachedFetch } from './api.js';
+import { API_URL, cachedFetch, getErrorMessage } from './api.js';
 import {
   followedTournaments, selectedTournamentId, isEditingTournaments, originalFollowedTournaments,
   setFollowedTournaments, setSelectedTournamentId, setIsEditingTournaments, setOriginalFollowedTournaments
@@ -199,6 +199,13 @@ export async function searchTournament() {
     }
   } catch (error) {
     console.error('Lỗi khi tìm kiếm giải đấu:', error);
+    const followedTournamentsDiv = document.getElementById('followedTournaments');
+    const old = document.querySelector('.search-results');
+    if (old) old.remove();
+    const errDiv = document.createElement('div');
+    errDiv.className = 'search-results';
+    errDiv.innerHTML = `<div class="error">${getErrorMessage(error)}</div>`;
+    followedTournamentsDiv.parentNode.insertBefore(errDiv, followedTournamentsDiv);
   }
 }
 

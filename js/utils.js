@@ -34,3 +34,12 @@ export function formatDateTime(dateString) {
   const weekday = weekdays[date.getDay()];
   return `${hours}:${minutes}, ${weekday}, ${day}/${month}`;
 }
+
+/** Hiển thị lỗi thân thiện vào container */
+export function showError(container, error) {
+  if (!container) return;
+  const msg = typeof error === 'string'
+    ? error
+    : (error?.message || 'Lỗi không xác định');
+  container.innerHTML = `<div class="error">${msg}</div>`;
+}

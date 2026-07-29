@@ -4,10 +4,8 @@
   "version": "1.0",
   "description": "Theo dõi lịch thi đấu của các đội tuyển Liên minh huyền thoại",
   "permissions": [
-    "storage",
-    "activeTab",
-    "background",           // Thêm permission này
-    "alarms"               // Thêm permission này
+    "storage",    
+    "alarms"
   ],
   "host_permissions": [
     "https://api.pandascore.co/*"

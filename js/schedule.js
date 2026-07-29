@@ -1,4 +1,4 @@
-import { API_URL, cachedFetch } from './api.js';
+import { API_URL, cachedFetch, getErrorMessage } from './api.js';
 import { followedTeams, followedTournaments } from './state.js';
 import { formatDateTime, handleImageError, getMatchTournamentName } from './utils.js';
 
@@ -141,7 +141,7 @@ export async function displayTeamSchedule(teamId) {
     scheduleList.innerHTML = html;
     scheduleList.querySelectorAll('img').forEach(img => { img.addEventListener('error', () => handleImageError(img)); });
   } catch (error) {
-    scheduleList.innerHTML = `<div class="error">Lỗi khi tải lịch thi đấu: ${error.message}</div>`;
+    scheduleList.innerHTML = `<div class="error">${getErrorMessage(error)}</div>`;
   }
 }
 
@@ -233,7 +233,7 @@ export async function displayTournamentSchedule(tournamentId) {
     tournamentScheduleList.innerHTML = html;
     tournamentScheduleList.querySelectorAll('img').forEach(img => { img.addEventListener('error', () => handleImageError(img)); });
   } catch (error) {
-    tournamentScheduleList.innerHTML = `<div class="error">Lỗi khi tải lịch thi đấu: ${error.message}</div>`;
+    tournamentScheduleList.innerHTML = `<div class="error">${getErrorMessage(error)}</div>`;
   }
 }
 
@@ -296,6 +296,6 @@ export async function displayTournamentStandings(leagueId) {
       standingsList.innerHTML = '<div class="no-data">Không có dữ liệu bảng xếp hạng</div>';
     }
   } catch (error) {
-    standingsList.innerHTML = `<div class="error">Lỗi khi tải bảng xếp hạng: ${error.message}</div>`;
+    standingsList.innerHTML = `<div class="error">${getErrorMessage(error)}</div>`;
   }
 }
