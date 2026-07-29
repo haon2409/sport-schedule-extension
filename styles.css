@@ -49,13 +49,15 @@ button:hover {
   background-color: #45a049;
 }
 
-.teams-list, .schedule-list {
+.teams-list,
+.schedule-list {
   border: 1px solid #ddd;
   border-radius: 4px;
-  padding: 10px;  
+  padding: 10px;
 }
 
-.team-item, .tournament-item {
+.team-item,
+.tournament-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -65,11 +67,13 @@ button:hover {
   transition: all 0.3s ease;
 }
 
-.team-item:last-child, .tournament-item:last-child {
+.team-item:last-child,
+.tournament-item:last-child {
   border-bottom: none;
 }
 
-.team-item:hover, .tournament-item:hover {
+.team-item:hover,
+.tournament-item:hover {
   background-color: #f5f5f5;
 }
 
@@ -348,7 +352,8 @@ h3 {
   letter-spacing: 1px;
 }
 
-h3 .team-logo, h3 .tournament-logo {
+h3 .team-logo,
+h3 .tournament-logo {
   width: 24px;
   height: 24px;
   object-fit: contain;
@@ -392,7 +397,7 @@ h3 .team-logo, h3 .tournament-logo {
 .tabs {
   display: flex;
   width: 100%;
-  background: #dfe1e5; 
+  background: #dfe1e5;
   padding: 8px 8px 0 8px;
   gap: 4px;
   box-sizing: border-box;
@@ -425,7 +430,7 @@ h3 .team-logo, h3 .tournament-logo {
 
 /* Tab Active: Đồng nhất màu với khung nội dung để tạo cảm giác liền mạch */
 .tab-button.active {
-  background: #ffffff; 
+  background: #ffffff;
   color: #1a73e8;
   font-weight: 600;
   box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.08);
@@ -446,7 +451,7 @@ h3 .team-logo, h3 .tournament-logo {
 /* Khung nội dung bên dưới (liền mạch với tab active) */
 .tab-content {
   display: none;
-  background: #ffffff;  
+  background: #ffffff;
   box-sizing: border-box;
 }
 
@@ -493,8 +498,13 @@ h3 .team-logo, h3 .tournament-logo {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .tournament-name {
@@ -621,10 +631,11 @@ h3 .team-logo, h3 .tournament-logo {
   font-style: italic;
 }
 
-.team-item.selected, .tournament-item.selected {
+.team-item.selected,
+.tournament-item.selected {
   background-color: #e3f2fd;
   border-left: 4px solid #2196f3;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .team-item.selected .followed-team-name,
@@ -634,16 +645,19 @@ h3 .team-logo, h3 .tournament-logo {
   font-weight: 500;
 }
 
-.team-item.selected .team-logo, .tournament-item.selected .tournament-logo {
+.team-item.selected .team-logo,
+.tournament-item.selected .tournament-logo {
   transform: scale(1.1);
   transition: transform 0.2s ease;
 }
 
-.team-item.selected .remove-team, .tournament-item.selected .remove-tournament {
+.team-item.selected .remove-team,
+.tournament-item.selected .remove-tournament {
   color: #1976d2;
 }
 
-.team-item.selected:hover, .tournament-item.selected:hover {
+.team-item.selected:hover,
+.tournament-item.selected:hover {
   background-color: #bbdefb;
 }
 
@@ -654,13 +668,15 @@ h3 .team-logo, h3 .tournament-logo {
   flex-grow: 1;
 }
 
-.team-item.match-today {
+.team-item.match-today, 
+.tournament-item.match-today {
   font-weight: bold;
-  border-left: 4px solid #ff4757; /* Thêm vạch đỏ bên cạnh để nổi bật */
+  border-left: 4px solid #ff4757; 
   background-color: #fff3bf;
 }
 
-.team-item.match-today .followed-team-name {
+.team-item.match-today .followed-team-name,
+.tournament-item.match-today .followed-team-name {
   color: #d63031;
 }
 
@@ -672,7 +688,8 @@ h3 .team-logo, h3 .tournament-logo {
 }
 
 .tab-button[disabled]:hover {
-  background-color: #f0f0f0; /* Ngăn hiệu ứng hover khi bị disable */
+  background-color: #f0f0f0;
+  /* Ngăn hiệu ứng hover khi bị disable */
 }
 
 /* Hiệu ứng kéo thả danh sách đội tuyển */
