@@ -275,7 +275,6 @@ input[type="text"]::placeholder {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 4px;
-  max-height: 280px;
   overflow-y: auto;
   background: var(--bg);
 }
