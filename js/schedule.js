@@ -172,13 +172,17 @@ export async function displayTournamentSchedule(tournamentId) {
       const matchTime = formatDateTime(match.scheduled_at || match.begin_at || match.end_at);
       const matchType = match.number_of_games ? `BO${match.number_of_games}` : 'BO?';
 
-      let detailLine = matchType;
+      let detailLine = '';
       let boToneClass = 'followed-match-bo--positive';
 
       if (statusType === 'past') {
-        const team1Score = match.results?.find(r => r.team_id === team1.id)?.score ?? '-';
-        const team2Score = match.results?.find(r => r.team_id === team2.id)?.score ?? '-';
+        const team1Score = match.results?.find(r => r.team_id === team1.id)?.score ?? 0;
+        const team2Score = match.results?.find(r => r.team_id === team2.id)?.score ?? 0;
         detailLine = `${team1Score}-${team2Score}`;
+        
+        if (Number(team1Score) < Number(team2Score)) {
+          boToneClass = 'followed-match-bo--negative';
+        }
       } else if (statusType === 'live') {
         const team1Score = match.results?.find(r => r.team_id === team1.id)?.score || 0;
         const team2Score = match.results?.find(r => r.team_id === team2.id)?.score || 0;
@@ -196,7 +200,7 @@ export async function displayTournamentSchedule(tournamentId) {
             <div class="followed-match-detail">
               <div class="followed-match-time">${matchTime}</div>
               <div class="followed-match-extra">
-                <span class="followed-match-bo ${boToneClass}">${detailLine}</span>
+                ${detailLine ? `<span class="followed-match-bo ${boToneClass}">${detailLine}</span>` : ''}
                 <span class="followed-match-tournament">${matchType}</span>
               </div>
             </div>
@@ -211,7 +215,8 @@ export async function displayTournamentSchedule(tournamentId) {
 
     html += '<h4>Trận đấu đã diễn ra</h4>';
     if (pastData && pastData.length > 0) {
-      pastData.forEach(match => { html += buildTournamentRow(match, 'past'); });
+      const reversedPastData = [...pastData].reverse();
+      reversedPastData.forEach(match => { html += buildTournamentRow(match, 'past'); });
     } else {
       html += '<div class="no-matches">Không có trận đấu đã diễn ra</div>';
     }
