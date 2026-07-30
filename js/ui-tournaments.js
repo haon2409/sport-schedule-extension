@@ -58,16 +58,11 @@ export function createTournamentFollowedItemHTML(tournament) {
         </div>
       `;
     } else {
-      const timeOnly = matchTime.split(',')[0].trim();
       centerContent = `
-        <span style="color: #666; font-size: 10px;">${matchTime}</span>
-        <div>
-          <span style="font-weight: 500; font-size: 11px;">${timeOnly}</span>
-          <span style="color: #666; margin-left: 3px; font-size: 10px;">${matchType}</span>
-        </div>
+       <span style="color: #666; font-size: 10px;">${matchTime}</span>
+       <span style="color: #666; font-size: 10px;">${matchType}</span>
       `;
     }
-
     return `
       <div class="tournament-match-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; width: 100%; font-size: 11px;">
         <div style="display: flex; align-items: center; gap: 4px;">
