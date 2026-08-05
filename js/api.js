@@ -1,5 +1,6 @@
 export const API_URL = 'https://api.pandascore.co';
 export const CACHE_DURATION = 60 * 60 * 1000; // 1 giờ
+export const LIVE_CACHE_DURATION = 60 * 1000; // 1 phút (Cập nhật: Cache riêng cho trận live)
 
 export async function getApiKey() {
   return new Promise((resolve) => {
@@ -19,9 +20,15 @@ export async function cachedFetch(url) {
     const cacheKey = 'api_cache_' + url;
     const now = Date.now();
 
+    // 1. Phân loại URL để xác định thời gian sống của cache
+    const isLiveMatch = url.includes('/matches/running');
+    const currentDuration = isLiveMatch ? LIVE_CACHE_DURATION : CACHE_DURATION;
+
     chrome.storage.local.get([cacheKey], async (result) => {
       const cached = result[cacheKey];
-      if (cached && (now - cached.timestamp < CACHE_DURATION)) {
+      
+      // 2. Thay thế CACHE_DURATION bằng currentDuration
+      if (cached && (now - cached.timestamp < currentDuration)) {
         resolve(cached.data);
         return;
       }
@@ -63,6 +70,7 @@ export async function cachedFetch(url) {
 
 /** Map mã lỗi → message tiếng Việt */
 export function getErrorMessage(error) {
+  /* Giữ nguyên như cũ */
   const code = error?.message || String(error) || '';
   switch (code) {
     case 'NO_API_KEY':
@@ -90,7 +98,12 @@ export function updateClearCacheButtonState() {
     const hasValidCache = Object.keys(items).some(key => {
       if (key.startsWith('api_cache_')) {
         const cached = items[key];
-        return cached && (now - cached.timestamp < CACHE_DURATION);
+        
+        // 3. Đồng bộ logic kiểm tra thời gian cache ở trạng thái nút xóa
+        const isLive = key.includes('/matches/running');
+        const duration = isLive ? LIVE_CACHE_DURATION : CACHE_DURATION;
+        
+        return cached && (now - cached.timestamp < duration);
       }
       return false;
     });
@@ -108,6 +121,7 @@ export function updateClearCacheButtonState() {
 }
 
 export async function clearAllCache() {
+  /* Giữ nguyên như cũ */
   return new Promise((resolve) => {
     chrome.storage.local.get(null, (items) => {
       const keysToRemove = Object.keys(items).filter(key => key.startsWith('api_cache_'));
