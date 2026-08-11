@@ -22,7 +22,7 @@ export function createFollowedItemHTML(item, type = 'team') {
 
   if (item.matchData) {
     const opponent = item.matchData.opponent;
-    const oppDisplay = opponent?.acronym || opponent?.name || 'Chưa xác định';
+    const oppDisplay = opponent?.acronym || opponent?.name || '???';
     const oppLogo = opponent?.image_url || 'https://via.placeholder.com/24';
     const matchTime = formatDateTime(item.matchData.matchTime);
     const matchType = item.matchData.numberOfGames ? `BO${item.matchData.numberOfGames}` : '—';
