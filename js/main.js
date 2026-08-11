@@ -11,9 +11,25 @@ import {
 import { displayTeamSchedule } from './schedule.js';
 import { icons } from './icons.js';
 
+// Hàm tiện ích khởi tạo HTML trạng thái
+function setContainerState(elementId, htmlContent) {
+  const container = document.getElementById(elementId);
+  if (container) {
+    container.innerHTML = htmlContent;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const followedTeamsDiv = document.getElementById('followedTeams');
-  followedTeamsDiv.innerHTML = '<div class="loading">Đang tải danh sách đội...</div>';
+  
+  // 1. Chỉ để loading ở danh sách đội/giải đang tải dữ liệu
+  setContainerState('followedTeams', '<div class="loading">Đang tải danh sách đội...</div>');
+  setContainerState('followedTournaments', '<div class="loading">Đang tải danh sách giải...</div>');
+
+  // 2. Mặc định các ô chi tiết hiển thị trạng thái chưa chọn (KHÔNG ĐỂ LOADING)
+  setContainerState('scheduleList', '<div class="no-data">Chưa chọn đội tuyển</div>');
+  setContainerState('tournamentScheduleList', '<div class="no-data">Chưa chọn giải đấu</div>');
+  setContainerState('tournamentStandingsList', '<div class="no-data">Chưa chọn giải đấu</div>');
 
   // Header actions: Settings + Clear cache
   const headerActions = document.getElementById('headerActions');
@@ -57,12 +73,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       await checkMatchesOnPopupOpen();
       displayFollowedTeams();
     } else {
-      followedTeamsDiv.innerHTML = '';
+      setContainerState('followedTeams', '<div class="no-data">Chưa theo dõi đội nào</div>');
     }
+    
     if (result.followedTournaments) {
       setFollowedTournaments(result.followedTournaments);
       await checkTournamentMatchesOnPopupOpen();
       displayFollowedTournaments();
+    } else {
+      setContainerState('followedTournaments', '<div class="no-data">Chưa theo dõi giải đấu nào</div>');
     }
     updateClearCacheButtonState();
   });
@@ -95,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const rawId = teamElement.dataset.teamId || teamElement.dataset.id || teamElement.dataset.opponentId;
       
       if (rawId && rawId !== 'undefined') {
-        e.stopPropagation(); // Chặn lan truyền sự kiện
+        e.stopPropagation();
         const teamId = parseInt(rawId, 10);
         
         setSelectedTeamId(teamId);
@@ -105,47 +124,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // 1. Gắn cho danh sách giải đang theo dõi
   const followedTournamentsDiv = document.getElementById('followedTournaments');
   if (followedTournamentsDiv) {
     followedTournamentsDiv.addEventListener('click', handleScheduleClick);
   }
 
-  // 2. Gắn lại cho lịch thi đấu giải (Đảm bảo khu vực này hoạt động trở lại)
   const tournamentScheduleList = document.getElementById('tournamentScheduleList');
   if (tournamentScheduleList) {
     tournamentScheduleList.addEventListener('click', handleScheduleClick);
   }
 
-  // 3. Gắn cho lịch thi đấu thông thường (nếu có)
   const scheduleList = document.getElementById('scheduleList');
   if (scheduleList) {
+    scheduleList.innerHTML = '<div class="no-data">Chưa chọn đội tuyển</div>';
     scheduleList.addEventListener('click', handleScheduleClick);
   }
 
-  // Lắng nghe click toàn cục ở giai đoạn Capture (thêm "true" ở cuối) để ưu tiên xử lý click đội tuyển trước
   document.addEventListener('click', (e) => {
-    // 1. Kiểm tra xem có đang click bên trong một dòng của danh sách Giải đấu không
     const tournamentItem = e.target.closest('.tournament-item');
     if (!tournamentItem) return;
 
-    // 2. Kiểm tra mục tiêu click có phải là khu vực tên/logo đội tuyển không
     const teamBlock = e.target.closest('.followed-team-block, .followed-opponent-block');
     
     if (teamBlock && !teamBlock.classList.contains('followed-opponent-block--empty')) {
       const rawId = teamBlock.dataset.teamId || teamBlock.dataset.id || teamBlock.dataset.opponentId;
       
       if (rawId) {
-        // 3. CHẶN sự kiện lan truyền xuống dòng giải đấu (ngăn mở lịch giải)
         e.stopPropagation(); 
-        
         const teamId = parseInt(rawId, 10);
         
-        // 4. (Tuỳ chọn) Tự động chuyển sang tab Đội tuyển nếu UI đang dùng tab ẩn/hiện
         const teamsTabBtn = document.querySelector('.tab-button[data-tab="teams"]');
         if (teamsTabBtn) teamsTabBtn.click();
         
-        // 5. Hiển thị lịch thi đấu đội tuyển
         setSelectedTeamId(teamId);
         displayFollowedTeams();
         displayTeamSchedule(teamId);
@@ -156,5 +166,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (tournamentStandingsList) {
       tournamentStandingsList.addEventListener('click', handleScheduleClick);
     }
-  }, true); // <-- Quan trọng: 'true' giúp bắt sự kiện chặn đứng trước khi nó chạy code của ui-tournaments.js
+  }, true);
 });

@@ -68,7 +68,6 @@ export function createTournamentFollowedItemHTML(tournament) {
     }
     return `
       <div class="tournament-match-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; width: 100%; font-size: 11px;">
-        <!-- Thêm data-team-id và class để nhận diện click -->
         <div class="followed-team-block" data-team-id="${team1Id}" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
           <img class="team-logo" src="${team1Logo}" alt="${team1Name}" style="width: 14px; height: 14px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/14'">
           <span style="font-weight: 500;">${team1Name}</span>
@@ -76,7 +75,6 @@ export function createTournamentFollowedItemHTML(tournament) {
         <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
           ${centerContent}
         </div>
-        <!-- Thêm data-team-id và class để nhận diện click -->
         <div class="followed-opponent-block" data-team-id="${team2Id}" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
           <span style="font-weight: 500;">${team2Name}</span>
           <img class="team-logo" src="${team2Logo}" alt="${team2Name}" style="width: 14px; height: 14px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/14'">
@@ -123,22 +121,22 @@ export async function checkTournamentMatchesOnPopupOpen() {
       ]);
 
       const matchMap = new Map();
-      [...(liveData || []), ...(todayMatches || [])].forEach(m => {
+      [...(Array.isArray(liveData) ? liveData : []), ...(Array.isArray(todayMatches) ? todayMatches : [])].forEach(m => {
         matchMap.set(m.id, m);
       });
       const combinedMatches = Array.from(matchMap.values());
 
       if (combinedMatches.length > 0) {
-        return { tournamentId: tournament.id, matches: combinedMatches, type: liveData.length > 0 ? 'live' : 'today' };
+        return { tournamentId: tournament.id, matches: combinedMatches, type: (Array.isArray(liveData) && liveData.length > 0) ? 'live' : 'today' };
       }
 
       const upcomingData = await cachedFetch(`${API_URL}/lol/matches/upcoming?filter[league_id]=${tournament.id}&per_page=1&sort=begin_at&include=${matchInclude}`);
-      if (upcomingData.length > 0) {
+      if (Array.isArray(upcomingData) && upcomingData.length > 0) {
         return { tournamentId: tournament.id, matches: upcomingData, type: 'upcoming' };
       }
 
       const pastData = await cachedFetch(`${API_URL}/lol/matches/past?filter[league_id]=${tournament.id}&per_page=1&sort=-end_at&include=${matchInclude}`);
-      if (pastData.length > 0) {
+      if (Array.isArray(pastData) && pastData.length > 0) {
         return { tournamentId: tournament.id, matches: pastData, type: 'past' };
       }
 
@@ -166,6 +164,7 @@ export async function checkTournamentMatchesOnPopupOpen() {
 
 export async function searchTournament() {
   const searchInput = document.getElementById('tournamentSearch');
+  const searchBtn = document.getElementById('tournamentSearchButton');
   const tournamentName = searchInput.value.trim();
   if (!tournamentName) return;
 
@@ -173,13 +172,15 @@ export async function searchTournament() {
   if (oldSearchResults) oldSearchResults.remove();
 
   try {
+    if (searchBtn) searchBtn.disabled = true;
+
     let data = await cachedFetch(`${API_URL}/lol/tournaments?search[name]=${encodeURIComponent(tournamentName)}&per_page=10`);
 
-    if (data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       data = await cachedFetch(`${API_URL}/lol/leagues?search[name]=${encodeURIComponent(tournamentName)}&per_page=10`);
     }
 
-    if (data.length > 0) {
+    if (Array.isArray(data) && data.length > 0) {
       const searchResults = document.createElement('div');
       searchResults.className = 'search-results';
       searchResults.innerHTML = '<h3>Kết quả tìm kiếm:</h3>';
@@ -235,6 +236,8 @@ export async function searchTournament() {
     errDiv.className = 'search-results';
     errDiv.innerHTML = `<div class="error">${getErrorMessage(error)}</div>`;
     followedTournamentsDiv.parentNode.insertBefore(errDiv, followedTournamentsDiv);
+  } finally {
+    if (searchBtn) searchBtn.disabled = false;
   }
 }
 
@@ -335,8 +338,8 @@ export function removeTournament(tournamentId) {
 
   const tournamentScheduleList = document.getElementById('tournamentScheduleList');
   const tournamentStandingsList = document.getElementById('tournamentStandingsList');
-  if (tournamentScheduleList) tournamentScheduleList.innerHTML = '';
-  if (tournamentStandingsList) tournamentStandingsList.innerHTML = '';
+  if (tournamentScheduleList) tournamentScheduleList.innerHTML = '<div class="no-data">Chưa chọn giải đấu</div>';
+  if (tournamentStandingsList) tournamentStandingsList.innerHTML = '<div class="no-data">Chưa chọn giải đấu</div>';
 }
 
 export function setupTournamentEditButtons() {

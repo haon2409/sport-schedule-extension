@@ -4,7 +4,9 @@ import { formatDateTime, handleImageError, getMatchTournamentName } from './util
 
 export async function displayTeamSchedule(teamId) {
   const scheduleList = document.getElementById('scheduleList');
-  const scheduleSection = document.querySelector('.schedule-section');
+  if (!scheduleList) return;
+
+  const scheduleSection = document.querySelector('#teams-tab .schedule-section');
   scheduleSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   scheduleList.innerHTML = '<div class="loading">Đang tải lịch thi đấu...</div>';
 
@@ -48,7 +50,6 @@ export async function displayTeamSchedule(teamId) {
       return `
         <div class="schedule-item ${includeResult ? 'past' : 'upcoming'}">
           <div class="followed-row-inner">
-            <!-- Đã sửa: Thêm data-team-id cho đội 1 -->
             <div class="followed-team-block" data-team-id="${selectedOpponent?.id || team.id}">
               <img class="team-logo" src="${teamALogo}" alt="${teamAName} logo">
               <span class="followed-team-name">${teamAName}</span>
@@ -60,7 +61,6 @@ export async function displayTeamSchedule(teamId) {
                 <span class="followed-match-tournament">${tournamentName}</span>
               </div>
             </div>            
-            <!-- Đã sửa: Dùng otherOpponent thay vì biến opponent không tồn tại -->
             <div class="followed-opponent-block" data-team-id="${otherOpponent?.id || ''}">
               <span class="followed-opponent-name">${teamBName}</span>
               <img class="team-logo" src="${teamBLogo}" alt="${teamBName} logo">
@@ -88,7 +88,7 @@ export async function displayTeamSchedule(teamId) {
     }
 
     html += '<h4>Trận đấu đang diễn ra</h4>';
-    if (liveData && liveData.length > 0) {
+    if (Array.isArray(liveData) && liveData.length > 0) {
       liveData.forEach(match => {
         try {
           const team1 = match.opponents?.[0]?.opponent;
@@ -106,7 +106,6 @@ export async function displayTeamSchedule(teamId) {
           html += `
             <div class="schedule-item live">
               <div class="match-teams">
-                <!-- Đã sửa: Thêm data-team-id vào team-info để click được -->
                 <div class="team-info" data-team-id="${team1?.id || ''}">
                   <img class="team-logo" src="${team1Logo}" alt="${team1Name} logo">
                   <span>${team1Name}</span>
@@ -135,7 +134,7 @@ export async function displayTeamSchedule(teamId) {
     }
 
     html += '<h4>Trận đấu sắp tới</h4>';
-    if (upcomingData && upcomingData.length > 0) {
+    if (Array.isArray(upcomingData) && upcomingData.length > 0) {
       upcomingData.forEach(match => { html += buildTeamHistoryRow(match, { includeResult: false }); });
     } else {
       html += '<div class="no-matches">Không có trận đấu sắp tới</div>';
@@ -149,9 +148,14 @@ export async function displayTeamSchedule(teamId) {
 }
 
 export async function displayTournamentSchedule(tournamentId) {
-  const tournament = followedTournaments.find(t => t.id === tournamentId);
   const tournamentScheduleList = document.getElementById('tournamentScheduleList');
   if (!tournamentScheduleList) return;
+
+  const tournament = followedTournaments.find(t => t.id === tournamentId);
+  if (!tournament) {
+    tournamentScheduleList.innerHTML = '<div class="no-data">Không tìm thấy thông tin giải đấu</div>';
+    return;
+  }
 
   tournamentScheduleList.innerHTML = '<div class="loading">Đang tải lịch thi đấu...</div>';
 
@@ -196,7 +200,6 @@ export async function displayTournamentSchedule(tournamentId) {
       return `
         <div class="schedule-item ${statusType}">
           <div class="followed-row-inner">
-            <!-- Đã sửa: Thêm data-team-id cho team1 -->
             <div class="followed-team-block" data-team-id="${team1.id || ''}">
               <img class="team-logo" src="${team1Logo}" alt="${team1Name} logo">
               <span class="followed-team-name">${team1Name}</span>
@@ -208,7 +211,6 @@ export async function displayTournamentSchedule(tournamentId) {
                 <span class="followed-match-tournament">${matchType}</span>
               </div>
             </div>            
-            <!-- Đã sửa: Đổi biến opponent thành team2 -->
             <div class="followed-opponent-block" data-team-id="${team2.id || ''}">
               <span class="followed-opponent-name">${team2Name}</span>
               <img class="team-logo" src="${team2Logo}" alt="${team2Name} logo">
@@ -219,7 +221,7 @@ export async function displayTournamentSchedule(tournamentId) {
     };
 
     html += '<h4>Trận đấu đã diễn ra</h4>';
-    if (pastData && pastData.length > 0) {
+    if (Array.isArray(pastData) && pastData.length > 0) {
       const reversedPastData = [...pastData].reverse();
       reversedPastData.forEach(match => { html += buildTournamentRow(match, 'past'); });
     } else {
@@ -227,14 +229,14 @@ export async function displayTournamentSchedule(tournamentId) {
     }
 
     html += '<h4>Trận đấu đang diễn ra</h4>';
-    if (liveData && liveData.length > 0) {
+    if (Array.isArray(liveData) && liveData.length > 0) {
       liveData.forEach(match => { html += buildTournamentRow(match, 'live'); });
     } else {
       html += '<div class="no-matches">Không có trận đấu đang diễn ra</div>';
     }
 
     html += '<h4>Trận đấu sắp tới</h4>';
-    if (upcomingData && upcomingData.length > 0) {
+    if (Array.isArray(upcomingData) && upcomingData.length > 0) {
       upcomingData.forEach(match => { html += buildTournamentRow(match, 'upcoming'); });
     } else {
       html += '<div class="no-matches">Không có trận đấu sắp tới</div>';
@@ -248,7 +250,6 @@ export async function displayTournamentSchedule(tournamentId) {
 }
 
 export async function displayTournamentStandings(leagueId) {
-  const tournamentInfo = followedTournaments.find(t => t.id === leagueId);
   const standingsList = document.getElementById('tournamentStandingsList');
   if (!standingsList) return;
 
@@ -257,7 +258,7 @@ export async function displayTournamentStandings(leagueId) {
   try {
     const seriesData = await cachedFetch(`${API_URL}/lol/series?filter[league_id]=${leagueId}&sort=-begin_at`);
 
-    if (!seriesData || seriesData.length === 0 || !seriesData[0].tournaments || seriesData[0].tournaments.length === 0) {
+    if (!Array.isArray(seriesData) || seriesData.length === 0 || !seriesData[0].tournaments || seriesData[0].tournaments.length === 0) {
       standingsList.innerHTML = '<div class="no-data">Không có dữ liệu giải đấu hiện tại</div>';
       return;
     }
@@ -265,7 +266,7 @@ export async function displayTournamentStandings(leagueId) {
     const actualTournamentId = seriesData[0].tournaments[0].id;
     const data = await cachedFetch(`${API_URL}/tournaments/${actualTournamentId}/standings`);
 
-    if (data && data.length > 0) {
+    if (Array.isArray(data) && data.length > 0) {
       let html = `
         <div class="standings-header">
           <div class="standings-rank">#</div>
@@ -280,14 +281,13 @@ export async function displayTournamentStandings(leagueId) {
       const sortedData = [...data].sort((a, b) => a.rank - b.rank);
 
       sortedData.forEach((standing) => {
-        const team = standing.team;
+        const team = standing.team || { name: 'Chưa xác định', image_url: null };
         const wins = standing.wins || 0;
         const losses = standing.losses || 0;
         const rank = standing.rank || '-';
         const totalMatches = wins + losses;
         const winRate = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : 0;
 
-        // Đã thêm data-team-id và class để hỗ trợ click xem lịch sử đấu
         html += `
           <div class="standings-item">
             <div class="standings-rank">${rank}</div>
