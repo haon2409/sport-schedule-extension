@@ -151,5 +151,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         displayTeamSchedule(teamId);
       }
     }
+
+    const tournamentStandingsList = document.getElementById('tournamentStandingsList');
+    if (tournamentStandingsList) {
+      tournamentStandingsList.addEventListener('click', handleScheduleClick);
+    }
   }, true); // <-- Quan trọng: 'true' giúp bắt sự kiện chặn đứng trước khi nó chạy code của ui-tournaments.js
 });

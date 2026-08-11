@@ -287,11 +287,11 @@ export async function displayTournamentStandings(leagueId) {
         const totalMatches = wins + losses;
         const winRate = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : 0;
 
-        // Đã sửa: Xóa thẻ onerror inline gây infinite loop
+        // Đã thêm data-team-id và class để hỗ trợ click xem lịch sử đấu
         html += `
           <div class="standings-item">
             <div class="standings-rank">${rank}</div>
-            <div class="standings-team" data-team-id="${team.id || ''}">
+            <div class="standings-team followed-team-block" data-team-id="${team?.id || ''}" style="cursor: pointer;">
               <img class="team-logo" src="${team.image_url || 'https://via.placeholder.com/24'}" alt="${team.name} logo">
               <span class="team-name">${team.name}</span>
             </div>
@@ -303,8 +303,6 @@ export async function displayTournamentStandings(leagueId) {
           </div>`;
       });
       standingsList.innerHTML = html;
-      
-      // Đã sửa: Gắn sự kiện lỗi ảnh bằng handleImageError một cách an toàn
       standingsList.querySelectorAll('img').forEach(img => { img.addEventListener('error', () => handleImageError(img)); });
     } else {
       standingsList.innerHTML = '<div class="no-data">Không có dữ liệu bảng xếp hạng</div>';
