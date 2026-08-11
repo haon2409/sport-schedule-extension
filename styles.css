@@ -22,21 +22,26 @@
 }
 
 body {
-  width: 800px;
-  max-height: 600px; /* Giới hạn chiều cao tối đa */
+  width: 800px; 
+  max-height: 600px;
   margin: 0;
   padding: 12px;
 }
 
 .container {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* Chia làm 2 cột bằng nhau (mỗi bên 50%) */
-  gap: 15px; /* Khoảng cách giữa 2 cột */ 
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  height: 100%;
 }
 
 /* ── Header ── */
 .header {
-  grid-column: 1 / -1; /* Ép Header trải dài hết toàn bộ bề ngang (qua cả 2 cột) */
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 5px;
 }
 
@@ -55,7 +60,7 @@ body {
   flex-shrink: 0;
 }
 
-/* ── Buttons (hệ thống đồng bộ) ── */
+/* ── Buttons ── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -85,7 +90,6 @@ body {
   cursor: not-allowed;
 }
 
-/* Primary */
 .btn-primary {
   background: var(--primary);
   color: #fff;
@@ -96,7 +100,6 @@ body {
   border-color: var(--primary-hover);
 }
 
-/* Success */
 .btn-success {
   background: var(--success);
   color: #fff;
@@ -107,7 +110,6 @@ body {
   border-color: var(--success-hover);
 }
 
-/* Danger */
 .btn-danger {
   background: var(--danger);
   color: #fff;
@@ -118,7 +120,6 @@ body {
   border-color: var(--danger-hover);
 }
 
-/* Ghost / secondary */
 .btn-ghost {
   background: transparent;
   color: var(--muted);
@@ -129,7 +130,6 @@ body {
   color: var(--text);
 }
 
-/* Icon-only */
 .btn-icon {
   width: 32px;
   height: 32px;
@@ -151,7 +151,6 @@ body {
   color: var(--success);
 }
 
-/* Search button trong search-section */
 .search-section .btn {
   height: 34px;
   padding: 0 14px;
@@ -188,65 +187,22 @@ input[type="text"]::placeholder {
 
 /* ── Tabs ── */
 .tabs {
-  /* display: flex;
-  width: 100%;
-  background: #e8eaed;
-  padding: 4px;
-  gap: 2px;
-  border-radius: 8px;
-  box-sizing: border-box; */
-  display: none !important;
-}
-
-.tab-button {
-  flex: 1;
-  height: 32px;
-  padding: 0 10px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--muted);
-  font-weight: 500;
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-}
-
-.tab-button:hover {
-  background: rgba(255, 255, 255, 0.5);
-  color: var(--text);
-}
-
-.tab-button.active {
-  background: var(--bg);
-  color: var(--primary);
-  font-weight: 600;
-  box-shadow: var(--shadow);
+  display: none !important; /* Ẩn nút bấm chuyển tab */
 }
 
 .tab-content {
-  display: flex !important; /* Bắt buộc hiển thị cả 2 tab cùng lúc */
+  display: flex !important; /* Bắt buộc hiển thị cả 2 tab */
   flex-direction: column;
   gap: 12px;
-  height: 100%;
 }
 
-/* Thêm vạch kẻ phân cách ở bên phải của tab Đội tuyển */
 #teams-tab {
   border-right: 1px solid var(--border);
   padding-right: 15px;
 }
 
-/* Điều chỉnh lại padding cho tab Giải đấu để cân bằng */
 #tournaments-tab {
   padding-left: 5px;
-}
-
-.tab-content.active {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 /* ── Section header ── */
@@ -367,20 +323,6 @@ input[type="text"]::placeholder {
 .followed-team-block:hover,
 .followed-opponent-block:not(.followed-opponent-block--empty):hover {
   background: rgba(0, 0, 0, 0.04);
-}
-
-#scheduleList .followed-team-block,
-#scheduleList .followed-opponent-block:not(.followed-opponent-block--empty),
-#tournamentScheduleList .followed-team-block,
-#tournamentScheduleList .followed-opponent-block:not(.followed-opponent-block--empty) {
-  cursor: default;
-}
-
-#scheduleList .followed-team-block:hover,
-#scheduleList .followed-opponent-block:not(.followed-opponent-block--empty):hover,
-#tournamentScheduleList .followed-team-block:hover,
-#tournamentScheduleList .followed-opponent-block:not(.followed-opponent-block--empty):hover {
-  background: transparent;
 }
 
 .followed-team-name,
@@ -551,6 +493,7 @@ input[type="text"]::placeholder {
   align-items: center;
   gap: 6px;
   font-size: 12px;
+  cursor: pointer;
 }
 
 .vs {

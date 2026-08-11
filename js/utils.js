@@ -18,6 +18,15 @@ export function getMatchTournamentName(match) {
 }
 
 export function handleImageError(img) {
+  // Kiểm tra nếu đã thử tải ảnh fallback hoặc link hiện tại đã là placeholder
+  if (img.dataset.fallbackApplied || img.src.includes('via.placeholder.com')) {
+    // Sử dụng ảnh SVG dạng base64 (chạy offline, không bao giờ lỗi mạng) để ngắt hoàn toàn vòng lặp
+    img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><rect width="24" height="24" fill="%23cccccc"/></svg>';
+    return;
+  }
+  
+  // Đánh dấu đã chạy fallback
+  img.dataset.fallbackApplied = 'true';
   img.src = 'https://via.placeholder.com/24';
 }
 

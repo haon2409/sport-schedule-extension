@@ -36,8 +36,11 @@ export function createTournamentFollowedItemHTML(tournament) {
     const team1 = opponents[0] || null;
     const team2 = opponents[1] || null;
 
+    const team1Id = team1?.id || '';
     const team1Name = team1?.acronym || team1?.name || 'TBD';
     const team1Logo = team1?.image_url || 'https://via.placeholder.com/16';
+
+    const team2Id = team2?.id || '';
     const team2Name = team2?.acronym || team2?.name || 'TBD';
     const team2Logo = team2?.image_url || 'https://via.placeholder.com/16';
 
@@ -65,14 +68,16 @@ export function createTournamentFollowedItemHTML(tournament) {
     }
     return `
       <div class="tournament-match-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; width: 100%; font-size: 11px;">
-        <div style="display: flex; align-items: center; gap: 4px;">
+        <!-- Thêm data-team-id và class để nhận diện click -->
+        <div class="followed-team-block" data-team-id="${team1Id}" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
           <img class="team-logo" src="${team1Logo}" alt="${team1Name}" style="width: 14px; height: 14px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/14'">
           <span style="font-weight: 500;">${team1Name}</span>
         </div>
         <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
           ${centerContent}
         </div>
-        <div style="display: flex; align-items: center; gap: 4px;">
+        <!-- Thêm data-team-id và class để nhận diện click -->
+        <div class="followed-opponent-block" data-team-id="${team2Id}" style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
           <span style="font-weight: 500;">${team2Name}</span>
           <img class="team-logo" src="${team2Logo}" alt="${team2Name}" style="width: 14px; height: 14px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/14'">
         </div>

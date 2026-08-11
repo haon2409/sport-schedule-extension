@@ -48,7 +48,8 @@ export async function displayTeamSchedule(teamId) {
       return `
         <div class="schedule-item ${includeResult ? 'past' : 'upcoming'}">
           <div class="followed-row-inner">
-            <div class="followed-team-block">
+            <!-- Đã sửa: Thêm data-team-id cho đội 1 -->
+            <div class="followed-team-block" data-team-id="${selectedOpponent?.id || team.id}">
               <img class="team-logo" src="${teamALogo}" alt="${teamAName} logo">
               <span class="followed-team-name">${teamAName}</span>
             </div>
@@ -58,8 +59,9 @@ export async function displayTeamSchedule(teamId) {
                 <span class="followed-match-bo ${boToneClass}">${detailLine}</span>
                 <span class="followed-match-tournament">${tournamentName}</span>
               </div>
-            </div>
-            <div class="followed-opponent-block">
+            </div>            
+            <!-- Đã sửa: Dùng otherOpponent thay vì biến opponent không tồn tại -->
+            <div class="followed-opponent-block" data-team-id="${otherOpponent?.id || ''}">
               <span class="followed-opponent-name">${teamBName}</span>
               <img class="team-logo" src="${teamBLogo}" alt="${teamBName} logo">
             </div>
@@ -104,7 +106,8 @@ export async function displayTeamSchedule(teamId) {
           html += `
             <div class="schedule-item live">
               <div class="match-teams">
-                <div class="team-info">
+                <!-- Đã sửa: Thêm data-team-id vào team-info để click được -->
+                <div class="team-info" data-team-id="${team1?.id || ''}">
                   <img class="team-logo" src="${team1Logo}" alt="${team1Name} logo">
                   <span>${team1Name}</span>
                 </div>
@@ -113,7 +116,7 @@ export async function displayTeamSchedule(teamId) {
                   <span class="vs">-</span>
                   <span class="score">${team2Score}</span>
                 </div>
-                <div class="team-info">
+                <div class="team-info" data-team-id="${team2?.id || ''}">
                   <img class="team-logo" src="${team2Logo}" alt="${team2Name} logo">
                   <span>${team2Name}</span>
                 </div>
@@ -193,7 +196,8 @@ export async function displayTournamentSchedule(tournamentId) {
       return `
         <div class="schedule-item ${statusType}">
           <div class="followed-row-inner">
-            <div class="followed-team-block">
+            <!-- Đã sửa: Thêm data-team-id cho team1 -->
+            <div class="followed-team-block" data-team-id="${team1.id || ''}">
               <img class="team-logo" src="${team1Logo}" alt="${team1Name} logo">
               <span class="followed-team-name">${team1Name}</span>
             </div>
@@ -203,8 +207,9 @@ export async function displayTournamentSchedule(tournamentId) {
                 ${detailLine ? `<span class="followed-match-bo ${boToneClass}">${detailLine}</span>` : ''}
                 <span class="followed-match-tournament">${matchType}</span>
               </div>
-            </div>
-            <div class="followed-opponent-block">
+            </div>            
+            <!-- Đã sửa: Đổi biến opponent thành team2 -->
+            <div class="followed-opponent-block" data-team-id="${team2.id || ''}">
               <span class="followed-opponent-name">${team2Name}</span>
               <img class="team-logo" src="${team2Logo}" alt="${team2Name} logo">
             </div>
@@ -282,11 +287,12 @@ export async function displayTournamentStandings(leagueId) {
         const totalMatches = wins + losses;
         const winRate = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : 0;
 
+        // Đã sửa: Xóa thẻ onerror inline gây infinite loop
         html += `
           <div class="standings-item">
             <div class="standings-rank">${rank}</div>
-            <div class="standings-team">
-              <img class="team-logo" src="${team.image_url || 'https://via.placeholder.com/24'}" alt="${team.name} logo" onerror="this.src='https://via.placeholder.com/24'">
+            <div class="standings-team" data-team-id="${team.id || ''}">
+              <img class="team-logo" src="${team.image_url || 'https://via.placeholder.com/24'}" alt="${team.name} logo">
               <span class="team-name">${team.name}</span>
             </div>
             <div class="standings-stats">
@@ -297,6 +303,9 @@ export async function displayTournamentStandings(leagueId) {
           </div>`;
       });
       standingsList.innerHTML = html;
+      
+      // Đã sửa: Gắn sự kiện lỗi ảnh bằng handleImageError một cách an toàn
+      standingsList.querySelectorAll('img').forEach(img => { img.addEventListener('error', () => handleImageError(img)); });
     } else {
       standingsList.innerHTML = '<div class="no-data">Không có dữ liệu bảng xếp hạng</div>';
     }
